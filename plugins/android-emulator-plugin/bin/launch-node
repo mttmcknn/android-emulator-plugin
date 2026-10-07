@@ -1,0 +1,19 @@
+#!/bin/sh
+# Runs the given script with the Node runtime bundled with Codex, or node on PATH.
+set -eu
+
+PATH="${PATH:-/usr/bin:/bin}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+export PATH
+
+for candidate in "${CODEX_MCP_NODE_PATH:-}" "${CODEX_BROWSER_USE_NODE_PATH:-}"; do
+  if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+if node_path=$(command -v node 2>/dev/null); then
+  exec "$node_path" "$@"
+fi
+
+printf '%s\n' 'Android Emulators could not find Node.js 20 or newer. Install Node.js or update Codex.' >&2
+exit 127

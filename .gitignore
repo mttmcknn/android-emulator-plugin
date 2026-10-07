@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+
+# Local development files.
+/docs/
+/AGENTS.md
+/.claude/
+/.codex/
+/coverage/
+*.log

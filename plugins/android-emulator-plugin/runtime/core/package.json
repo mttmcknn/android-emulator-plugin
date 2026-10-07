@@ -1,0 +1,6 @@
+{
+  "name": "android-emulator-runtime",
+  "version": "2026.10.7",
+  "private": true,
+  "type": "module"
+}

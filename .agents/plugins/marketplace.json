@@ -1,0 +1,20 @@
+{
+  "name": "mttmcknn",
+  "interface": {
+    "displayName": "Mttmcknn"
+  },
+  "plugins": [
+    {
+      "name": "android-emulator-plugin",
+      "source": {
+        "source": "local",
+        "path": "./plugins/android-emulator-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

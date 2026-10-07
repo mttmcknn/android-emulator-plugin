@@ -1,0 +1,13 @@
+{
+  "name": "android-emulator-plugin",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build-plugin.mjs",
+    "check:bundle": "node scripts/build-plugin.mjs --check",
+    "test": "node scripts/build-plugin.mjs --check && node --test test/*.test.mjs"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "android-emulator-plugin",
+  "version": "2026.10.7",
+  "description": "Use an Android emulator in each Codex chat.",
+  "author": {
+    "name": "Matt McKenna",
+    "url": "https://github.com/mttmcknn"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "android",
+    "emulator",
+    "avd",
+    "adb",
+    "mobile",
+    "testing"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Android Emulators",
+    "shortDescription": "Android emulators for your Codex chats",
+    "longDescription": "Open, control, and test Android emulators from Codex. Each chat has its own device, and you can install APKs, change device conditions, record the screen, and follow actions as they happen.",
+    "developerName": "Matt McKenna",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Start an Android emulator for this chat",
+      "Install my debug build and open it",
+      "Check this screen in dark mode and large text"
+    ],
+    "brandColor": "#3DDC84",
+    "composerIcon": "./assets/logo.svg",
+    "logo": "./assets/logo.svg",
+    "logoDark": "./assets/logo-dark.svg"
+  },
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/setup/SKILL.md"
+    }
+  }
+}

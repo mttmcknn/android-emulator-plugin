@@ -1,0 +1,46 @@
+ObjC.import('AppKit');
+ObjC.import('Foundation');
+
+function requireReadableFile(filePath) {
+  const manager = $.NSFileManager.defaultManager;
+  if (!manager.isReadableFileAtPath($(filePath))) {
+    throw new Error('Capture file is no longer readable. Create the capture again and retry.');
+  }
+}
+
+function copyPng(filePath, pasteboard) {
+  const data = $.NSData.dataWithContentsOfFile($(filePath));
+  if (!data || data.length === 0) throw new Error('Could not read PNG capture data. Create the screenshot again and retry.');
+  pasteboard.clearContents;
+  if (!pasteboard.setDataForType(data, $.NSPasteboardTypePNG)) {
+    throw new Error('macOS rejected the PNG clipboard data. Retry the copy.');
+  }
+  const copied = pasteboard.dataForType($.NSPasteboardTypePNG);
+  if (!copied || copied.length !== data.length) {
+    throw new Error('macOS did not retain the PNG clipboard data. Retry the copy.');
+  }
+}
+
+function copyVideoFile(filePath, pasteboard) {
+  const fileUrl = $.NSURL.fileURLWithPath($(filePath));
+  pasteboard.clearContents;
+  if (!pasteboard.writeObjects($.NSArray.arrayWithObject(fileUrl))) {
+    throw new Error('macOS rejected the video file URL. Retry the copy.');
+  }
+  const copiedUrl = pasteboard.stringForType($.NSPasteboardTypeFileURL);
+  if (!copiedUrl || ObjC.unwrap(copiedUrl) !== ObjC.unwrap(fileUrl.absoluteString)) {
+    throw new Error('macOS did not retain the video file URL. Retry the copy.');
+  }
+}
+
+function run(argv) {
+  const filePath = argv[0];
+  const mimeType = argv[1];
+  if (!filePath || !mimeType) throw new Error('Missing capture path or MIME type.');
+  requireReadableFile(filePath);
+
+  const pasteboard = $.NSPasteboard.generalPasteboard;
+  if (mimeType === 'image/png') copyPng(filePath, pasteboard);
+  else if (mimeType === 'video/mp4') copyVideoFile(filePath, pasteboard);
+  else throw new Error('Unsupported capture MIME type.');
+}

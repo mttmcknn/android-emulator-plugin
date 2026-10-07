@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "emulator": {
+      "command": "./bin/launch-node",
+      "args": ["./runtime/hosts/codex/mcp.mjs"],
+      "cwd": ".",
+      "env_vars": ["ANDROID_HOME", "ANDROID_SDK_ROOT", "ANDROID_AVD_HOME", "ANDROID_USER_HOME", "ANDROID_EMULATOR_ANDROID_CLI", "CODEX_HOME", "CODEX_MCP_NODE_PATH", "CODEX_BROWSER_USE_NODE_PATH", "HOME", "PATH", "TMPDIR"],
+      "startup_timeout_sec": 20,
+      "tool_timeout_sec": 600,
+      "default_tools_approval_mode": "approve"
+    }
+  }
+}

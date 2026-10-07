@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Android Emulators</title>
+    <meta name="emulator-theme" content="" />
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body>
+    <!-- Device view -->
+    <div id="device-view" class="view">
+      <header class="bar">
+        <button type="button" class="device-button" id="device-button" aria-haspopup="menu" aria-expanded="false">
+          <span class="dot" id="dot"></span>
+          <span class="name" id="title">Android Emulator</span>
+          <span class="meta" id="subtitle"></span>
+          <svg class="chevron" viewBox="0 0 16 16"><path d="m4.5 6.5 3.5 3.5 3.5-3.5" /></svg>
+        </button>
+        <div class="bar-end">
+          <span class="meta mono" id="fps" title="Frames drawn per second"></span>
+          <button type="button" class="icon-button" id="attach" data-tooltip="Add screenshot to chat context" aria-label="Add screenshot to chat context" hidden>
+            <svg viewBox="0 0 24 24"><path d="m20 11.5-8.2 8.2a5 5 0 0 1-7.1-7.1l8.9-8.9a3.3 3.3 0 0 1 4.7 4.7l-8.9 8.9a1.7 1.7 0 0 1-2.4-2.4l8.2-8.2" /></svg>
+          </button>
+          <button type="button" class="icon-button" id="expand" data-tooltip="Expand" aria-label="Expand" hidden>
+            <svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" /></svg>
+          </button>
+        </div>
+        <div id="device-menu" class="menu" role="menu" hidden></div>
+      </header>
+
+      <main>
+        <div class="workspace">
+          <section id="stage">
+            <div id="device" hidden>
+              <div id="screen-box">
+                <canvas id="screen" aria-label="Emulator screen. Click to focus, then type to send keys."></canvas>
+                <div id="agent-layer" aria-hidden="true"></div>
+              </div>
+            </div>
+            <textarea id="keys" aria-label="Emulator keyboard input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+            <div id="agent-chip" aria-live="polite"></div>
+            <div id="drop-target" hidden><span>Drop to install on this emulator</span></div>
+
+            <aside id="capture-tray" class="capture-tray" aria-labelledby="capture-title" hidden>
+              <div class="drawer-head">
+                <span id="capture-title" class="name">Capture saved</span>
+                <button type="button" id="capture-close" class="icon-button" aria-label="Close capture" data-tooltip="Close capture"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+              </div>
+              <img id="capture-preview" alt="Captured emulator screen" hidden />
+              <p id="capture-detail" class="muted"></p>
+              <div class="actions">
+                <button type="button" id="capture-both" class="button primary">Copy + add to chat</button>
+                <button type="button" id="capture-copy" class="button">Copy</button>
+                <button type="button" id="capture-chat" class="button">Add to chat</button>
+                <button type="button" id="capture-open" class="button">Open file</button>
+              </div>
+              <p id="capture-feedback" role="status" class="muted"></p>
+              <button type="button" id="capture-clear-context" class="button" hidden>Clear capture context</button>
+            </aside>
+
+            <p id="message" hidden></p>
+
+            <div id="launcher" hidden>
+              <div class="launcher-head">
+                <h1>Start a device</h1>
+                <p class="muted">Start an Android device for this chat.</p>
+              </div>
+              <div class="group">
+                <div class="label">Virtual devices</div>
+                <ul id="avd-list" class="list"></ul>
+              </div>
+              <form id="create-form" class="group">
+                <div class="label">New device</div>
+                <div class="panel">
+                  <label class="row"><span>Device</span><select id="profile"></select></label>
+                  <label class="row"><span>System image</span><select id="image"></select></label>
+                  <label class="row"><span>Keep after this chat is archived</span><input id="keep" type="checkbox" class="switch" /></label>
+                </div>
+                <button type="submit" class="button primary">Create and start</button>
+              </form>
+            </div>
+
+            <aside id="drawer" hidden>
+              <div class="drawer-head">
+                <span class="name">Device controls</span>
+                <button type="button" class="icon-button" data-close data-tooltip="Close device controls" aria-label="Close device controls"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+              </div>
+              <div class="group">
+                <div class="label">Display</div>
+                <div class="panel">
+                  <div class="row"><span>Theme</span>
+                    <div class="segmented" role="group" aria-label="Theme">
+                      <button type="button" data-setting='{"darkMode":false}'>Light</button>
+                      <button type="button" data-setting='{"darkMode":true}'>Dark</button>
+                    </div>
+                  </div>
+                  <label class="row"><span>Font size</span>
+                    <select id="font-scale">
+                      <option value="0.85">Small</option>
+                      <option value="1" selected>Default</option>
+                      <option value="1.15">Large</option>
+                      <option value="1.3">Larger</option>
+                      <option value="1.5">Largest</option>
+                      <option value="2">200%</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div class="group">
+                <div class="label">Snapshots</div>
+                <ul id="snapshot-list" class="list"></ul>
+                <form id="snapshot-form" class="inline-form">
+                  <input id="snapshot-name" type="text" placeholder="Snapshot name" pattern="[A-Za-z0-9._\-]{1,64}" required />
+                  <button type="submit" class="button">Save</button>
+                </form>
+              </div>
+              <div class="group">
+                <div class="label">Location</div>
+                <div class="panel">
+                  <label class="row"><span>Latitude</span><input id="lat" type="number" step="any" value="40.7411" /></label>
+                  <label class="row"><span>Longitude</span><input id="lng" type="number" step="any" value="-73.9897" /></label>
+                </div>
+                <button type="button" class="button" id="set-location">Set location</button>
+              </div>
+              <div class="group">
+                <div class="label">Battery</div>
+                <div class="panel">
+                  <label class="row"><span>Level</span><span class="range"><input id="battery" type="range" min="0" max="100" value="100" /><output id="battery-value" class="mono">100%</output></span></label>
+                  <label class="row"><span>Charging</span><input id="charging" type="checkbox" class="switch" checked /></label>
+                </div>
+                <button type="button" class="button" id="set-battery">Apply battery</button>
+              </div>
+              <div class="group">
+                <div class="label">Emulator</div>
+                <p id="details" class="muted"></p>
+                <div class="actions">
+                  <button type="button" class="button" id="stop">Stop</button>
+                  <button type="button" class="button danger" id="stop-delete" hidden>Stop and delete device</button>
+                </div>
+              </div>
+              <div class="group">
+                <div class="label">Shortcuts</div>
+                <dl class="shortcuts">
+                  <dt>⌘←&thinsp;/&thinsp;⌘→</dt><dd>Rotate</dd>
+                  <dt>⌘⌫</dt><dd>Back</dd>
+                  <dt>⇧⌘H</dt><dd>Home</dd>
+                  <dt>⌘O</dt><dd>Overview</dd>
+                  <dt>⌘P</dt><dd>Power</dd>
+                  <dt>⌘↑&thinsp;/&thinsp;⌘↓</dt><dd>Volume</dd>
+                  <dt>⌘S</dt><dd>Screenshot</dd>
+                  <dt>⇧⌘R</dt><dd>Record</dd>
+                </dl>
+              </div>
+            </aside>
+
+            <aside id="minimap-drawer" class="minimap-drawer" aria-labelledby="minimap-title" hidden>
+              <div class="drawer-head">
+                <div>
+                  <span id="minimap-title" class="name">Screen map</span>
+                  <span id="minimap-summary" class="meta"></span>
+                  <span id="minimap-association" class="meta" hidden></span>
+                </div>
+                <button type="button" class="icon-button" id="minimap-close" data-tooltip="Close screen map" aria-label="Close screen map"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+              </div>
+              <p id="minimap-status" class="muted" role="status">Screens and routes are remembered as the agent uses your app.</p>
+              <div class="actions">
+                <button type="button" class="button" id="minimap-refresh">Refresh</button>
+                <button type="button" class="button" id="minimap-locate">Locate</button>
+                <button type="button" class="button danger" id="minimap-cancel" hidden>Stop navigation</button>
+              </div>
+              <section id="minimap-current-section" class="group" aria-labelledby="minimap-current-label" hidden>
+                <div id="minimap-current-label" class="label">Last located screen</div>
+                <div id="minimap-current" class="minimap-current">Not located yet</div>
+              </section>
+              <section id="minimap-places-section" class="group" aria-labelledby="minimap-places-label" hidden>
+                <div id="minimap-places-label" class="label">Known screens</div>
+                <ul id="minimap-places" class="list minimap-list"></ul>
+              </section>
+              <section id="minimap-routes-section" class="group" aria-labelledby="minimap-routes-label" hidden>
+                <div id="minimap-routes-label" class="label">Learned routes</div>
+                <ul id="minimap-routes" class="list minimap-list"></ul>
+              </section>
+            </aside>
+          </section>
+
+          <section id="logcat" hidden>
+            <div class="logcat-bar">
+              <span class="name">Logcat</span>
+              <select id="log-level" aria-label="Minimum level">
+                <option value="V">Verbose</option>
+                <option value="D">Debug</option>
+                <option value="I" selected>Info</option>
+                <option value="W">Warn</option>
+                <option value="E">Error</option>
+              </select>
+              <input id="log-filter" type="search" placeholder="Filter tag or message" />
+              <button type="button" class="icon-button" id="log-pause" data-tooltip="Pause logs" aria-label="Pause logs"><svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12" /></svg></button>
+              <button type="button" class="icon-button" id="log-clear" data-tooltip="Clear logs" aria-label="Clear logs"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3" /></svg></button>
+              <button type="button" class="icon-button" id="log-close" data-tooltip="Close Logcat" aria-label="Close Logcat"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+            </div>
+            <div id="log-lines" class="mono"></div>
+          </section>
+        </div>
+
+        <nav id="rail" aria-label="Device controls">
+          <div class="rail-group">
+            <button type="button" class="icon-button" data-key="POWER" data-tooltip="Power (⌘P)" aria-label="Power (⌘P)"><svg viewBox="0 0 24 24"><path d="M12 3v9" /><path d="M17.7 6.6a8 8 0 1 1-11.4 0" /></svg></button>
+            <button type="button" class="icon-button" data-key="VOLUME_UP" data-tooltip="Volume up (⌘↑)" aria-label="Volume up (⌘↑)"><svg viewBox="0 0 24 24"><path d="M11 5 6.5 9H3v6h3.5l4.5 4z" /><path d="M15.5 9a4.5 4.5 0 0 1 0 6" /><path d="M18.5 6a8.5 8.5 0 0 1 0 12" /></svg></button>
+            <button type="button" class="icon-button" data-key="VOLUME_DOWN" data-tooltip="Volume down (⌘↓)" aria-label="Volume down (⌘↓)"><svg viewBox="0 0 24 24"><path d="M11 5 6.5 9H3v6h3.5l4.5 4z" /><path d="M15.5 9a4.5 4.5 0 0 1 0 6" /></svg></button>
+          </div>
+          <div class="rail-group">
+            <button type="button" class="icon-button" data-rotate="left" data-tooltip="Rotate left (⌘←)" aria-label="Rotate left (⌘←)"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.5" /><path d="M4 4v4.5h4.5" /></svg></button>
+            <button type="button" class="icon-button" data-rotate="right" data-tooltip="Rotate right (⌘→)" aria-label="Rotate right (⌘→)"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7L20 8.5" /><path d="M20 4v4.5h-4.5" /></svg></button>
+          </div>
+          <div class="rail-group" id="fold-controls" role="group" aria-label="Fold posture" hidden>
+            <button type="button" class="icon-button" data-posture="folded" data-tooltip="Folded" aria-label="Folded" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="8" y="3" width="9" height="18" rx="2"/><path d="M6 5v14"/></svg></button>
+            <button type="button" class="icon-button" data-posture="half-folded" data-tooltip="Partially folded" aria-label="Partially folded" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="m12 6 8-3v15l-8 3-8-6V3l8 3v15"/></svg></button>
+            <button type="button" class="icon-button" data-posture="unfolded" data-tooltip="Unfolded" aria-label="Unfolded" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/></svg></button>
+          </div>
+          <div class="rail-group">
+            <button type="button" class="icon-button" data-key="BACK" data-tooltip="Back (⌘⌫)" aria-label="Back (⌘⌫)"><svg viewBox="0 0 24 24"><path d="M16.5 5.5v13L6.5 12z" /></svg></button>
+            <button type="button" class="icon-button" data-key="HOME" data-tooltip="Home (⇧⌘H)" aria-label="Home (⇧⌘H)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" /></svg></button>
+            <button type="button" class="icon-button" data-key="APP_SWITCH" data-tooltip="Overview (⌘O)" aria-label="Overview (⌘O)"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></svg></button>
+          </div>
+          <div class="rail-group">
+            <button type="button" class="icon-button" id="screenshot" data-tooltip="Capture screenshot (⌘S)" aria-label="Capture screenshot (⌘S)"><svg viewBox="0 0 24 24"><path d="M9 5.5 10.5 4h3L15 5.5h3.5A1.5 1.5 0 0 1 20 7v10.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5V7a1.5 1.5 0 0 1 1.5-1.5z" /><circle cx="12" cy="12" r="3.25" /></svg></button>
+            <button type="button" class="icon-button" id="record" data-tooltip="Record screen (⇧⌘R)" aria-label="Record screen (⇧⌘R)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" /><circle class="record-dot" cx="12" cy="12" r="3" /></svg></button>
+            <button type="button" class="icon-button" id="logcat-toggle" data-tooltip="Logcat" aria-label="Logcat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h1" /><path d="M3 12h1" /><path d="M3 19h1" /><path d="M8 5h1" /><path d="M8 12h1" /><path d="M8 19h1" /><path d="M13 5h8" /><path d="M13 12h8" /><path d="M13 19h8" /></svg></button>
+          </div>
+          <div class="rail-spacer"></div>
+          <div class="rail-group">
+            <button type="button" class="icon-button" id="minimap-toggle" data-tooltip="Screen map" aria-label="Screen map" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 6.5 9.5 4l5 2.5L20 4v13.5L14.5 20l-5-2.5L4 20z" /><path d="M9.5 4v13.5M14.5 6.5V20" /></svg></button>
+            <button type="button" class="icon-button" id="more" data-tooltip="Device controls" aria-label="Device controls"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="17" r="2" /></svg></button>
+          </div>
+        </nav>
+      </main>
+    </div>
+
+    <!-- Manager view (global entrypoint) -->
+    <div id="manager-view" class="view page" hidden>
+      <header class="page-head">
+        <div>
+          <h1>Android Emulators</h1>
+          <p class="muted">A dedicated device for each chat.</p>
+        </div>
+        <button type="button" class="button" id="manager-refresh">Refresh</button>
+      </header>
+      <dl class="manager-stats" aria-label="Emulator overview">
+        <div><dt>Running in chats</dt><dd id="manager-count">—</dd></div>
+        <div><dt>Saved devices</dt><dd id="manager-device-count">—</dd></div>
+        <div><dt>Device storage</dt><dd id="manager-storage">—</dd></div>
+      </dl>
+      <p class="muted" id="manager-summary" role="status">Loading devices…</p>
+      <section class="group">
+        <h2 class="label">Running in chats</h2>
+        <ul id="manager-running" class="list"></ul>
+      </section>
+      <section class="group">
+        <h2 class="label">Saved devices</h2>
+        <ul id="manager-devices" class="list"></ul>
+      </section>
+    </div>
+
+    <dialog id="delete-dialog">
+      <form method="dialog">
+        <h2>Delete saved device?</h2>
+        <p id="delete-description"></p>
+        <div class="actions"><button class="button" value="cancel" autofocus>Cancel</button><button class="button danger" value="delete">Delete device</button></div>
+      </form>
+    </dialog>
+
+    <!-- APK viewer (file entrypoint) -->
+    <div id="apk-view" class="view page" hidden>
+      <div class="apk-card">
+        <div class="apk-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20"><path d="M4 14.5a6 6 0 0 1 12 0z" /><path d="m6.2 6.4 1.3 2M13.8 6.4l-1.3 2" /></svg>
+        </div>
+        <div class="apk-title">
+          <h1 id="apk-label">Reading APK…</h1>
+          <p class="muted mono" id="apk-package"></p>
+        </div>
+      </div>
+      <div class="panel" id="apk-facts"></div>
+      <div class="actions">
+        <button type="button" class="button primary" id="apk-install" disabled>Install on this chat's emulator</button>
+      </div>
+      <p class="muted" id="apk-status"></p>
+    </div>
+
+    <div id="tooltip" role="tooltip" hidden></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script src="/host/panel.js"></script>
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>
