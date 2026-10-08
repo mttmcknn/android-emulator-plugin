@@ -40,7 +40,7 @@ The source manifest and SDK/runtime behavior remain intact. The upload copy keep
 the existing supported Codex format (`.codex-plugin/plugin.json`, `.mcp.json`);
 there is no root `.app.json`, app binding, or fabricated remote endpoint. It uses
 the preserved website URL added upstream, the original publisher text and icons,
-a 25-character subtitle, factual desktop requirements and release notes. The
+a 26-character subtitle, factual desktop requirements and release notes. The
 brand color is slightly darker for the required 2:1 white contrast; the SVGs are
 unchanged, square 64×64 assets permitted by current official documentation.
 
