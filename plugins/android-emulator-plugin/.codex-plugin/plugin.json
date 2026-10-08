@@ -22,6 +22,7 @@
     "shortDescription": "Android emulators for your Codex chats",
     "longDescription": "Open, control, and test Android emulators from Codex. Each chat has its own device, and you can install APKs, change device conditions, record the screen, and follow actions as they happen.",
     "developerName": "Matt McKenna",
+    "websiteURL": "https://github.com/mttmcknn/android-emulator-plugin",
     "category": "Developer Tools",
     "capabilities": [
       "Interactive",
