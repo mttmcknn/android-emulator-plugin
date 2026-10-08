@@ -91,6 +91,7 @@ test('retainRuntime preserves a complete helper bundle after its throwaway sourc
     'core/vendor/KOTLIN-BOOST-LICENSE',
     'core/vendor/KOTLIN-THREETENBP-LICENSE',
     'core/vendor/MINIMAP-LICENSES.txt',
+    'core/vendor/MINIMAP-RUST-COPYRIGHT-library.html',
     'core/package.json',
   ]) assert.ok(fs.statSync(path.join(retained, relative)).isFile(), relative);
 

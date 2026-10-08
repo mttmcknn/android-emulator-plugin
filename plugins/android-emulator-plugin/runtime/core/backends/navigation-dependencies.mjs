@@ -279,8 +279,13 @@ export function createNavigationDependencies({
   }
 
   async function retainMinimapLicenses(signal) {
-    const notices = await fs.readFile(new URL('../vendor/MINIMAP-LICENSES.txt', import.meta.url));
-    await atomicWrite(path.join(path.dirname(locations.minimap), 'LICENSES.txt'), notices, signal, 0o600);
+    for (const [source, destination] of [
+      ['MINIMAP-LICENSES.txt', 'LICENSES.txt'],
+      ['MINIMAP-RUST-COPYRIGHT-library.html', 'MINIMAP-RUST-COPYRIGHT-library.html'],
+    ]) {
+      const notices = await fs.readFile(new URL(`../vendor/${source}`, import.meta.url));
+      await atomicWrite(path.join(path.dirname(locations.minimap), destination), notices, signal, 0o600);
+    }
   }
 
   async function installAndroid(signal) {

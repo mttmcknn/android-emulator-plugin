@@ -17,13 +17,41 @@ verbatim; no third-party work is relicensed. Identical license texts appear
 once, with each original source listed.
 
 All three supported official tar.gz assets contain only the minimap executable.
-Their embedded rustc source paths identify Rust commit
-b940084d7eb6a299eb4bfeb8e34901bc051e7ac4 (Rust 1.99.0). The Rust project
-COPYRIGHT and MIT/Apache license texts are retained below. This does not yet
-establish the entire precompiled standard-library/LLVM runtime component
-closure: the authoritative COPYRIGHT-library.html and a binary SBOM/build
-record remain needed for that subset. Do not treat this notice collection as
-a complete clearance of the upstream binaries. See LICENSE-AUDIT.md.
+Completed release build logs and embedded rustc source paths identify Rust
+1.99.0, source commit b940084d7eb6a299eb4bfeb8e34901bc051e7ac4. The logged
+asset hashes match the inspected downloads. The dated official Rust manifest
+identifies this same commit for rustc and each target's precompiled rust-std.
+Build evidence: https://github.com/mttmcknn/minimap/actions/runs/37045582749
+Manifest: https://static.rust-lang.org/dist/channel-rust-1.99.0.toml
+
+The unmodified official standard-library notice inventory accompanies this
+file as MINIMAP-RUST-COPYRIGHT-library.html. It was extracted from the official
+Rust 1.99.0 compiler distribution; its SHA-256 is
+5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27.
+Internal path: rustc/share/doc/rust/COPYRIGHT-library.html
+That upstream inventory includes in-tree copyright exceptions and original
+external crate license texts for the standard-library build. It covers a
+superset of targets and build dependencies; retaining it does not mean every
+listed crate is linked into the three Minimap binaries. The Rust project
+COPYRIGHT/MIT/Apache, Unicode data, and compiler-builtins runtime support
+licenses are retained below. This is a source/build-supported notice collection,
+not a binary-level SBOM or a legal guarantee. See LICENSE-AUDIT.md.
+
+Verified Rust 1.99.0 standard-library archive sources and SHA-256:
+- https://static.rust-lang.org/dist/2026-10-01/rust-std-1.99.0-aarch64-apple-darwin.tar.xz
+  a7c6de8aa21e7c31163a7656295b321bb85f5dce55ed8ea95ac9ac561202bb5b
+- https://static.rust-lang.org/dist/2026-10-01/rust-std-1.99.0-x86_64-apple-darwin.tar.xz
+  18ee81961a73c3ae966ecb1e8f6096438c90aeefece8856201a6ecc17f5bc850
+- https://static.rust-lang.org/dist/2026-10-01/rust-std-1.99.0-x86_64-unknown-linux-gnu.tar.xz
+  3e58dff2d0b72196b5ea4e90536e174d400de88564a52694686b81e091169933
+
+Verified sources of the byte-identical companion standard-library inventory:
+- https://static.rust-lang.org/dist/2026-10-01/rustc-1.99.0-aarch64-apple-darwin.tar.xz
+  334a66714ca316d71bbe5efe44f71762d0b276cea73be2987374693a837f7450
+- https://static.rust-lang.org/dist/2026-10-01/rustc-1.99.0-x86_64-apple-darwin.tar.xz
+  7460910254f059b49b99ee3ddbcf7197d16b9505b59c166e14a1465ee323a81d
+- https://static.rust-lang.org/dist/2026-10-01/rustc-1.99.0-x86_64-unknown-linux-gnu.tar.xz
+  77171ba2a0345fdf2abc4fedda55d6de078dae7a68527c28be8c77dcc9604bd5
 
 Release archives and verified SHA-256:
 - https://github.com/mttmcknn/minimap/releases/download/v0.2.1/minimap-aarch64-apple-darwin.tar.gz
@@ -2563,7 +2591,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 
-===== Rust COPYRIGHT (partial runtime notice coverage; see caveat above) =====
+===== Rust COPYRIGHT (exact release source) =====
 Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/COPYRIGHT
 
 Short version for non-lawyers:
@@ -2602,7 +2630,7 @@ covers the subset of source code used in the Rust Standard Library, as opposed
 to the toolchain as a whole.
 
 
-===== Rust LICENSE-MIT (partial runtime notice coverage; see caveat above) =====
+===== Rust LICENSE-MIT (exact release source) =====
 Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/LICENSE-MIT
 
 Copyright (c) The Rust Project Contributors
@@ -2632,7 +2660,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
 
-===== Rust LICENSE-APACHE (partial runtime notice coverage; see caveat above) =====
+===== Rust LICENSE-APACHE (exact release source) =====
 Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/LICENSE-APACHE
 
                               Apache License
@@ -2811,4 +2839,2430 @@ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
    of your accepting any such warranty or additional liability.
 
 END OF TERMS AND CONDITIONS
+
+
+===== Rust Unicode tables / Unicode-3.0 =====
+Source: Official Rust 1.99.0 compiler package, rustc/share/doc/rust/licenses/Unicode-3.0.txt; in-tree library/core/src/unicode notice in companion COPYRIGHT-library.html
+Original text SHA-256: f5062c9a188d81dfe66b56db4182dcf9e4b17c0d9b0d311a8e20b3a1b075c443
+
+UNICODE LICENSE V3
+
+COPYRIGHT AND PERMISSION NOTICE
+
+Copyright © 1991-2024 Unicode, Inc.
+
+NOTICE TO USER: Carefully read the following legal agreement. BY
+DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of data files and any associated documentation (the "Data Files") or
+software and any associated documentation (the "Software") to deal in the
+Data Files or Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, and/or sell
+copies of the Data Files or Software, and to permit persons to whom the
+Data Files or Software are furnished to do so, provided that either (a)
+this copyright and permission notice appear with all copies of the Data
+Files or Software, or (b) this copyright and permission notice appear in
+associated Documentation.
+
+THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+THIRD PARTY RIGHTS.
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+FILES OR SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder shall
+not be used in advertising or otherwise to promote the sale, use or other
+dealings in these Data Files or Software without prior written
+authorization of the copyright holder.
+
+
+===== Rust compiler_builtins 0.1.160 / LICENSE.txt =====
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/LICENSE.txt
+Original text SHA-256: ab6eec6caf0fa5775e411c7a8bc6a45c4ef2956b0980b157ab74fc5cd62a928b
+
+The compiler-builtins crate is available for use under both the MIT license
+and the Apache-2.0 license with the LLVM exception (MIT AND Apache-2.0 WITH
+LLVM-exception).
+
+The libm crate is available for use under the MIT license.
+
+As a contributor, you agree that your code may be used under any of the
+following: the MIT license, the Apache-2.0 license, or the Apache-2.0 license
+with the LLVM exception. In other words, original (non-derivative) work is
+licensed under MIT OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception. This is
+the default license for all other source in this repository.
+
+Text of the relevant licenses is provided below:
+
+------------------------------------------------------------------------------
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+------------------------------------------------------------------------------
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+    1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+    2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+    3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+    4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+    5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+    6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+    7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+    8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+    9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+    END OF TERMS AND CONDITIONS
+
+    APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+
+---- LLVM Exceptions to the Apache 2.0 License ----
+
+As an exception, if, as a result of your compiling your source code, portions
+of this Software are embedded into an Object form of such source code, you
+may redistribute such embedded portions in such Object form without complying
+with the conditions of Sections 4(a), 4(b) and 4(d) of the License.
+
+In addition, if you combine or link compiled forms of this Software with
+software that is licensed under the GPLv2 ("Combined Software") and if a
+court of competent jurisdiction determines that the patent provision (Section
+3), the indemnity provision (Section 9) or other Section of the License
+conflicts with the conditions of the GPLv2, you may retroactively and
+prospectively choose to deem waived or otherwise exclude such Section(s) of
+the License, but only in their entirety and only with respect to the Combined
+Software.
+------------------------------------------------------------------------------
+
+Portions of this software are derived from third-party works licensed under
+terms compatible with the above Apache-2.0 WITH LLVM-exception AND MIT
+license:
+
+* compiler-builtins is derived from LLVM's compiler-rt (https://llvm.org/).
+  Work derived from compiler-rt prior to 2019-01-19 is usable under the MIT
+  license, with the following copyright:
+
+      Copyright (c) 2009-2016 by the contributors listed in CREDITS.TXT
+
+  The relevant CREDITS.TXT is located at
+  https://github.com/llvm/llvm-project/blob/main/compiler-rt/CREDITS.TXT.
+
+* Work derived from compiler-rt after 2019-01-19 is usable under the
+  Apache-2.0 license with the LLVM exception.
+
+* The bundled `math` module is from the libm crate, usable under the MIT
+  license. For further details and copyrights, see see libm/LICENSE.txt at
+  https://github.com/rust-lang/compiler-builtins.
+
+Additionally, some source files may contain comments with specific copyrights
+or licenses.
+
+
+===== Rust compiler-builtins bundled libm / LICENSE.txt =====
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/LICENSE.txt
+Original text SHA-256: 3823dda7cf046602f4b4e77ec8e227863dc4736037cc85bb33d9f19febe16bb7
+
+rust-lang/libm as a whole is available for use under the MIT license:
+
+------------------------------------------------------------------------------
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+------------------------------------------------------------------------------
+
+As a contributor, you agree that your code can be used under either the MIT
+license or the Apache-2.0 license:
+
+------------------------------------------------------------------------------
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+------------------------------------------------------------------------------
+
+This Rust library contains the following copyrights:
+
+    Copyright (c) 2018 Jorge Aparicio
+
+Portions of this software are derived from third-party works licensed under
+terms compatible with the above MIT license:
+
+* musl libc https://www.musl-libc.org/. This library contains the following
+  copyright:
+
+      Copyright © 2005-2020 Rich Felker, et al.
+
+* The CORE-MATH project https://core-math.gitlabpages.inria.fr/. CORE-MATH
+  routines are available under the MIT license on a per-file basis.
+
+The musl libc COPYRIGHT file also includes the following notice relevant to
+math portions of the library:
+
+------------------------------------------------------------------------------
+Much of the math library code (src/math/* and src/complex/*) is
+Copyright © 1993,2004 Sun Microsystems or
+Copyright © 2003-2011 David Schultz or
+Copyright © 2003-2009 Steven G. Kargl or
+Copyright © 2003-2009 Bruce D. Evans or
+Copyright © 2008 Stephen L. Moshier or
+Copyright © 2017-2018 Arm Limited
+and labelled as such in comments in the individual source files. All
+have been licensed under extremely permissive terms.
+------------------------------------------------------------------------------
+
+Copyright notices are retained in src/* files where relevant.
+
+
+===== Rust compiler-builtins/libm original source notices (runtime-source superset) =====
+Source: Exact Rust b940084d7eb6a299eb4bfeb8e34901bc051e7ac4 source paths and SHA-256 values are listed below.
+Original text SHA-256: 93cc611db132dcae0e43dd5f8e668d98d425b1108a9633db7cbf4e63968ce4be
+
+Rust 1.99.0 compiler-builtins/libm original source notices
+This preserves leading upstream source comments from Rust commit b940084d7eb6a299eb4bfeb8e34901bc051e7ac4.
+It is a runtime-source superset: per-target conditional compilation and the final
+linker determine which routines reach the binary. Listed paths are not a claim that
+every routine is linked in every Minimap executable.
+No source comments or license terms below have been rewritten.
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/compiler-builtins/src/probestack.rs
+Original source SHA-256: 0ee11ae0cce89f3727341bb825e235736a4f666c5f04c9ac5303ba2f30fa460b
+
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! This module defines the `__rust_probestack` intrinsic which is used in the
+//! implementation of "stack probes" on certain platforms.
+//!
+//! The purpose of a stack probe is to provide a static guarantee that if a
+//! thread has a guard page then a stack overflow is guaranteed to hit that
+//! guard page. If a function did not have a stack probe then there's a risk of
+//! having a stack frame *larger* than the guard page, so a function call could
+//! skip over the guard page entirely and then later hit maybe the heap or
+//! another thread, possibly leading to security vulnerabilities such as [The
+//! Stack Clash], for example.
+//!
+//! [The Stack Clash]: https://blog.qualys.com/securitylabs/2017/06/19/the-stack-clash
+//!
+//! The `__rust_probestack` is called in the prologue of functions whose stack
+//! size is larger than the guard page, for example larger than 4096 bytes on
+//! x86. This function is then responsible for "touching" all pages relevant to
+//! the stack to ensure that that if any of them are the guard page we'll hit
+//! them guaranteed.
+//!
+//! The precise ABI for how this function operates is defined by LLVM. There's
+//! no real documentation as to what this is, so you'd basically need to read
+//! the LLVM source code for reference. Often though the test cases can be
+//! illuminating as to the ABI that's generated, or just looking at the output
+//! of `llc`.
+//!
+//! Note that `#[naked]` is typically used here for the stack probe because the
+//! ABI corresponds to no actual ABI.
+//!
+//! Finally it's worth noting that at the time of this writing LLVM only has
+//! support for stack probes on x86 and x86_64. There's no support for stack
+//! probes on any other architecture like ARM or PowerPC64. LLVM I'm sure would
+//! be more than welcome to accept such a change!
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/acos.rs
+Original source SHA-256: efd83a6138061209867f06421c6a756b8ca3aab5c6c0a85c4aba31bedb299da5
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_acos.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/* acos(x)
+ * Method :
+ *      acos(x)  = pi/2 - asin(x)
+ *      acos(-x) = pi/2 + asin(x)
+ * For |x|<=0.5
+ *      acos(x) = pi/2 - (x + x*x^2*R(x^2))     (see asin.c)
+ * For x>0.5
+ *      acos(x) = pi/2 - (pi/2 - 2asin(sqrt((1-x)/2)))
+ *              = 2asin(sqrt((1-x)/2))
+ *              = 2s + 2s*z*R(z)        ...z=(1-x)/2, s=sqrt(z)
+ *              = 2f + (2c + 2s*z*R(z))
+ *     where f=hi part of s, and c = (z-f*f)/(s+f) is the correction term
+ *     for f so that f+c ~ sqrt(z).
+ * For x<-0.5
+ *      acos(x) = pi - 2asin(sqrt((1-|x|)/2))
+ *              = pi - 0.5*(s+s*z*R(z)), where z=(1-|x|)/2,s=sqrt(z)
+ *
+ * Special cases:
+ *      if x is NaN, return x itself;
+ *      if |x|>1, return NaN with invalid signal.
+ *
+ * Function needed: sqrt
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/acosf.rs
+Original source SHA-256: c5c9c74d267725bbe5f9319e6f4a396af6ce46c890b601d3f963a5d74d12e4c3
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_acosf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/approx/cbrtf64.rs
+Original source SHA-256: 7344cf87169de41ffcf2f94d356603cf5093353e7e9b52bfbfb3c34206d5264e
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_cbrt.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ *
+ * Optimized by Bruce D. Evans.
+ */
+/* cbrt(x)
+ * Return cube root of x
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/asin.rs
+Original source SHA-256: 9693a7cb61674ec6fe22be9db8fe20276729c48b1562fd86d5421e372a0a12e4
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_asin.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/* asin(x)
+ * Method :
+ *      Since  asin(x) = x + x^3/6 + x^5*3/40 + x^7*15/336 + ...
+ *      we approximate asin(x) on [0,0.5] by
+ *              asin(x) = x + x*x^2*R(x^2)
+ *      where
+ *              R(x^2) is a rational approximation of (asin(x)-x)/x^3
+ *      and its remez error is bounded by
+ *              |(asin(x)-x)/x^3 - R(x^2)| < 2^(-58.75)
+ *
+ *      For x in [0.5,1]
+ *              asin(x) = pi/2-2*asin(sqrt((1-x)/2))
+ *      Let y = (1-x), z = y/2, s := sqrt(z), and pio2_hi+pio2_lo=pi/2;
+ *      then for x>0.98
+ *              asin(x) = pi/2 - 2*(s+s*z*R(z))
+ *                      = pio2_hi - (2*(s+s*z*R(z)) - pio2_lo)
+ *      For x<=0.98, let pio4_hi = pio2_hi/2, then
+ *              f = hi part of s;
+ *              c = sqrt(z) - f = (z-f*f)/(s+f)         ...f+c=sqrt(z)
+ *      and
+ *              asin(x) = pi/2 - 2*(s+s*z*R(z))
+ *                      = pio4_hi+(pio4-2s)-(2s*z*R(z)-pio2_lo)
+ *                      = pio4_hi+(pio4-2f)-(2s*z*R(z)-(pio2_lo+2c))
+ *
+ * Special cases:
+ *      if x is NaN, return x itself;
+ *      if |x|>1, return NaN with invalid signal.
+ *
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/asinf.rs
+Original source SHA-256: 25f6b7bbf46fc5aac4ebdd9e00118239747dcd28a79b90b858ddc4633d773d65
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_asinf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/atan.rs
+Original source SHA-256: 54181dbddf4f77b90b32b9f6819ac989da570dc02b791f3685d20a23d51324be
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_atan.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/* atan(x)
+ * Method
+ *   1. Reduce x to positive by atan(x) = -atan(-x).
+ *   2. According to the integer k=4t+0.25 chopped, t=x, the argument
+ *      is further reduced to one of the following intervals and the
+ *      arctangent of t is evaluated by the corresponding formula:
+ *
+ *      [0,7/16]      atan(x) = t-t^3*(a1+t^2*(a2+...(a10+t^2*a11)...)
+ *      [7/16,11/16]  atan(x) = atan(1/2) + atan( (t-0.5)/(1+t/2) )
+ *      [11/16.19/16] atan(x) = atan( 1 ) + atan( (t-1)/(1+t) )
+ *      [19/16,39/16] atan(x) = atan(3/2) + atan( (t-1.5)/(1+1.5t) )
+ *      [39/16,INF]   atan(x) = atan(INF) + atan( -1/t )
+ *
+ * Constants:
+ * The hexadecimal values are the intended ones for the following
+ * constants. The decimal values may be used, provided that the
+ * compiler will convert from decimal to binary accurately enough
+ * to produce the hexadecimal values shown.
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/atan2.rs
+Original source SHA-256: bb042e1e1b9f080bba1c7b29947f6c4ec9413807fae95000df2c4b50ab97650b
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_atan2.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ *
+ */
+/* atan2(y,x)
+ * Method :
+ *      1. Reduce y to positive by atan2(y,x)=-atan2(-y,x).
+ *      2. Reduce x to positive by (if x and y are unexceptional):
+ *              ARG (x+iy) = arctan(y/x)           ... if x > 0,
+ *              ARG (x+iy) = pi - arctan[y/(-x)]   ... if x < 0,
+ *
+ * Special cases:
+ *
+ *      ATAN2((anything), NaN ) is NaN;
+ *      ATAN2(NAN , (anything) ) is NaN;
+ *      ATAN2(+-0, +(anything but NaN)) is +-0  ;
+ *      ATAN2(+-0, -(anything but NaN)) is +-pi ;
+ *      ATAN2(+-(anything but 0 and NaN), 0) is +-pi/2;
+ *      ATAN2(+-(anything but INF and NaN), +INF) is +-0 ;
+ *      ATAN2(+-(anything but INF and NaN), -INF) is +-pi;
+ *      ATAN2(+-INF,+INF ) is +-pi/4 ;
+ *      ATAN2(+-INF,-INF ) is +-3pi/4;
+ *      ATAN2(+-INF, (anything but,0,NaN, and INF)) is +-pi/2;
+ *
+ * Constants:
+ * The hexadecimal values are the intended ones for the following
+ * constants. The decimal values may be used, provided that the
+ * compiler will convert from decimal to binary accurately enough
+ * to produce the hexadecimal values shown.
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/atan2f.rs
+Original source SHA-256: b9497b5adb75e2788c404fd121aa64dcfa0e9357b67af3b3e7e6d4624dae1ca1
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_atan2f.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/atanf.rs
+Original source SHA-256: 197762f16ed5951236e17d0869c529e857acc329cc287df019ff69e5401f3b4d
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_atanf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/cbrt.rs
+Original source SHA-256: 6f25fdb3b8c5cb5950f8d82e28c36a099865bbd4048cf7924e70b72b6f997822
+
+/* SPDX-License-Identifier: MIT */
+/* origin: core-math/src/binary64/cbrt/cbrt.c
+ * Copyright (c) 2021-2022 Alexei Sibidanov.
+ * Ported to Rust in 2025 by Trevor Gross.
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/cbrtf.rs
+Original source SHA-256: 7a2b4f190e8618c52cb23b47c040a4b4eacca739c68393cf14fb3f5d73988127
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_cbrtf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ * Debugged and optimized by Bruce D. Evans.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/* cbrtf(x)
+ * Return cube root of x
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/cos.rs
+Original source SHA-256: 6e81752899c471bd42d04bdf08e0b22bc10a29f92fa2a343281b995fd342f035
+
+// origin: FreeBSD /usr/src/lib/msun/src/s_cos.c */
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/cosf.rs
+Original source SHA-256: f48aa954f199fe4f54fd73b4e7886a75f2c08afba7fc31c6a36db5b5f90ced69
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_cosf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ * Optimized by Bruce D. Evans.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/erff.rs
+Original source SHA-256: 62c30876390e532d7dc9ac1f1f1c1f654065fba2b2e534e531964d79e1766196
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_erff.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/exp.rs
+Original source SHA-256: f48970e2b92d4cc0e997abcd9d54bfaf6b8dd689a8b62916ff1fcc396f6ef700
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_exp.c */
+/*
+ * ====================================================
+ * Copyright (C) 2004 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/* exp(x)
+ * Returns the exponential of x.
+ *
+ * Method
+ *   1. Argument reduction:
+ *      Reduce x to an r so that |r| <= 0.5*ln2 ~ 0.34658.
+ *      Given x, find r and integer k such that
+ *
+ *               x = k*ln2 + r,  |r| <= 0.5*ln2.
+ *
+ *      Here r will be represented as r = hi-lo for better
+ *      accuracy.
+ *
+ *   2. Approximation of exp(r) by a special rational function on
+ *      the interval [0,0.34658]:
+ *      Write
+ *          R(r**2) = r*(exp(r)+1)/(exp(r)-1) = 2 + r*r/6 - r**4/360 + ...
+ *      We use a special Remez algorithm on [0,0.34658] to generate
+ *      a polynomial of degree 5 to approximate R. The maximum error
+ *      of this polynomial approximation is bounded by 2**-59. In
+ *      other words,
+ *          R(z) ~ 2.0 + P1*z + P2*z**2 + P3*z**3 + P4*z**4 + P5*z**5
+ *      (where z=r*r, and the values of P1 to P5 are listed below)
+ *      and
+ *          |                  5          |     -59
+ *          | 2.0+P1*z+...+P5*z   -  R(z) | <= 2
+ *          |                             |
+ *      The computation of exp(r) thus becomes
+ *                              2*r
+ *              exp(r) = 1 + ----------
+ *                            R(r) - r
+ *                                 r*c(r)
+ *                     = 1 + r + ----------- (for better accuracy)
+ *                                2 - c(r)
+ *      where
+ *                              2       4             10
+ *              c(r) = r - (P1*r  + P2*r  + ... + P5*r   ).
+ *
+ *   3. Scale back to obtain exp(x):
+ *      From step 1, we have
+ *         exp(x) = 2^k * exp(r)
+ *
+ * Special cases:
+ *      exp(INF) is INF, exp(NaN) is NaN;
+ *      exp(-INF) is 0, and
+ *      for finite argument, only exp(0)=1 is exact.
+ *
+ * Accuracy:
+ *      according to an error analysis, the error is always less than
+ *      1 ulp (unit in the last place).
+ *
+ * Misc. info.
+ *      For IEEE double
+ *          if x >  709.782712893383973096 then exp(x) overflows
+ *          if x < -745.133219101941108420 then exp(x) underflows
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/exp2.rs
+Original source SHA-256: 7e73d7528d1407670d123a17a207242e98eb2f829a9b0dc91071200379adf63c
+
+// origin: FreeBSD /usr/src/lib/msun/src/s_exp2.c */
+//-
+// Copyright (c) 2005 David Schultz <das@FreeBSD.ORG>
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+// SUCH DAMAGE.
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/exp2f.rs
+Original source SHA-256: 1c0f02200a85a01e37b4657076963e0c6670f8f3d9dd1db80a64cec268d40027
+
+// origin: FreeBSD /usr/src/lib/msun/src/s_exp2f.c
+//-
+// Copyright (c) 2005 David Schultz <das@FreeBSD.ORG>
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+// SUCH DAMAGE.
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/expf.rs
+Original source SHA-256: 983bf3922bed804ec889890a0e7d31641fd7098588645dad47920915c2753950
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_expf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/expm1.rs
+Original source SHA-256: 6cc612ca7cf1384dc15f541b301a1f176efbc79536aff1293408b3121cc30ad3
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_expm1.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/expm1f.rs
+Original source SHA-256: 2b517f1bcb6279c906aad737f08c83ac30d7871e3beff266ea50a01fa18ccc81
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_expm1f.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/fma.rs
+Original source SHA-256: 680cf8fa506f9438b6b97afd1868c9c5860629047f79acf4ce474045dd7af06b
+
+/* SPDX-License-Identifier: MIT */
+/* origin: musl src/math/fma.c, fmaf.c Ported to generic Rust algorithm in 2025, TG. */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/fmaf16.rs
+Original source SHA-256: b2f1e0cf98f87bcf4b08e8071aa29dc715591a7099d0e25ccd2a99f96d0167c2
+
+/* SPDX-License-Identifier: MIT OR Apache-2.0
+ * origin: original implementation, 2026 (TG) */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/ceil.rs
+Original source SHA-256: bf033f078eee7ad8b2d4c4ebe16316a050c00ca1344ef58501a91dc84a62f92e
+
+/* SPDX-License-Identifier: MIT */
+/* origin: musl src/math/ceilf.c */
+
+//! Generic `ceil` algorithm.
+//!
+//! Note that this uses the algorithm from musl's `ceilf` rather than `ceil` or `ceill` because
+//! performance seems to be better (based on icount) and it does not seem to experience rounding
+//! errors on i386.
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/floor.rs
+Original source SHA-256: d736b5f56a5623a9c8f08eb3adeef6ff022977fa3de693b74cb249adf1ce8c62
+
+/* SPDX-License-Identifier: MIT
+ * origin: musl src/math/floor.c */
+
+//! Generic `floor` algorithm.
+//!
+//! Note that this uses the algorithm from musl's `floorf` rather than `floor` or `floorl` because
+//! performance seems to be better (based on icount) and it does not seem to experience rounding
+//! errors on i386.
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/fma.rs
+Original source SHA-256: ba44930a56d7c1953ab0c96c7c767911c9dc6967083700c8ef02f43672c8482f
+
+/* SPDX-License-Identifier: MIT */
+/* origin: musl src/math/fma.c. Ported to generic Rust algorithm in 2025, TG. */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/fmax.rs
+Original source SHA-256: 36bf5260cfcff74e2e59972fcadd066496036ef888b60c94510be503832c52b4
+
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
+//! IEEE 754-2011 `maxNum`. This has been superseded by IEEE 754-2019 `maximumNumber`.
+//!
+//! Per the spec, returns the canonicalized result of:
+//! - `x` if `x > y`
+//! - `y` if `y > x`
+//! - The other number if one is NaN
+//! - Otherwise, either `x` or `y`, canonicalized
+//! - -0.0 and +0.0 may be disregarded (unlike newer operations)
+//!
+//! We do not treat sNaN and qNaN differently; even though IEEE technically requires this, (a call
+//! with sNaN should return qNaN rather than the other result), it breaks associativity so isn't
+//! desired behavior. C23 does not differentiate between sNaN and qNaN, so we do not either. More
+//! on the problems with `minNum` [here][minnum-removal].
+//!
+//! IEEE also specifies that a sNaN in either argument should signal invalid, but we do not
+//! implement this.
+//!
+//! [minnum-removal]: https://grouper.ieee.org/groups/msc/ANSI_IEEE-Std-754-2019/background/minNum_maxNum_Removal_Demotion_v3.pdf
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/fmaximum.rs
+Original source SHA-256: d085799dc1a625d96158ed9595447c157fe75cd183da75edccb02f2cb6c7224c
+
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
+//! IEEE 754-2019 `maximum`.
+//!
+//! Per the spec, returns the canonicalized result of:
+//! - `x` if `x > y`
+//! - `y` if `y > x`
+//! - +0.0 if x and y are zero with opposite signs
+//! - qNaN if either operation is NaN
+//!
+//! Note that the IEEE 754-2019 specifies that a sNaN in either argument should signal invalid,
+//! but we do not implement this.
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/fmaximum_num.rs
+Original source SHA-256: ad9a820c227d7e7d493cccf14856ba9928a7dc5f973660ee9865938aeff6b086
+
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
+//! IEEE 754-2019 `maximumNumber`.
+//!
+//! Per the spec, returns:
+//! - `x` if `x > y`
+//! - `y` if `y > x`
+//! - +0.0 if x and y are zero with opposite signs
+//! - Either `x` or `y` if `x == y` and the signs are the same
+//! - Non-NaN if one operand is NaN
+//! - qNaN if both operands are NaNx
+//!
+//! Note that the IEEE 754-2019 specifies that a sNaN in either argument should signal invalid,
+//! but we do not implement this.
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/fmin.rs
+Original source SHA-256: 92dc4c0889bcde4c42e99329e179c945f6e824b2775a5162152fb1b58dd823a5
+
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
+//! IEEE 754-2008 `minNum`. This has been superseded by IEEE 754-2019 `minimumNumber`.
+//!
+//! Per the spec, returns the canonicalized result of:
+//! - `x` if `x < y`
+//! - `y` if `y < x`
+//! - The other number if one is NaN
+//! - Otherwise, either `x` or `y`, canonicalized
+//! - -0.0 and +0.0 may be disregarded (unlike newer operations)
+//!
+//! We do not treat sNaN and qNaN differently; even though IEEE technically requires this, (a call
+//! with sNaN should return qNaN rather than the other result), it breaks associativity so isn't
+//! desired behavior. C23 does not differentiate between sNaN and qNaN, so we do not either. More
+//! on the problems with `minNum` [here][minnum-removal].
+//!
+//! IEEE also specifies that a sNaN in either argument should signal invalid, but we do not
+//! implement this.
+//!
+//! [minnum-removal]: https://grouper.ieee.org/groups/msc/ANSI_IEEE-Std-754-2019/background/minNum_maxNum_Removal_Demotion_v3.pdf
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/fminimum.rs
+Original source SHA-256: 3071d662c6c4c9c8129c46b63f32b979430e823359ee4c95cf3619e81fbc5be6
+
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
+//! IEEE 754-2019 `minimum`.
+//!
+//! Per the spec, returns the canonicalized result of:
+//! - `x` if `x < y`
+//! - `y` if `y < x`
+//! - -0.0 if x and y are zero with opposite signs
+//! - qNaN if either operation is NaN
+//!
+//! Note that the IEEE 754-2019 specifies that a sNaN in either argument should signal invalid,
+//! but we do not implement this.
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/fminimum_num.rs
+Original source SHA-256: 81aabcbadce6b93d15ae02d6eecd50aeec8c7bd24dc919881e6ca3648a6da7ca
+
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
+//! IEEE 754-2019 `minimum`.
+//!
+//! Per the spec, returns:
+//! - `x` if `x < y`
+//! - `y` if `y < x`
+//! - -0.0 if x and y are zero with opposite signs
+//! - Either `x` or `y` if `x == y` and the signs are the same
+//! - Non-NaN if one operand is NaN
+//! - qNaN if both operands are NaNx
+//!
+//! Note that the IEEE 754-2019 specifies that a sNaN in either argument should signal invalid,
+//! but we do not implement this.
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/fmod.rs
+Original source SHA-256: 11aae62d08d656d815184eafd78a3b2d5764b6ce308b89e3819cd049bc491fe7
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/support/int_traits/narrowing_div.rs
+Original source SHA-256: 5f5378e33f1da56090d0dce2514926ab465dce65b89ad4ee2f7da07a92f8d5de
+
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/rint.rs
+Original source SHA-256: 7340d5558ca3237701fefac52d0c384339a6a3b1ab022d5c3d78220bc8d4ee78
+
+/* SPDX-License-Identifier: MIT */
+/* origin: musl src/math/rint.c */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/sqrt.rs
+Original source SHA-256: 0cc77367ada05e7b8622c991af0b989ed97c7630ac7a2e9fd192b969203a2705
+
+/* SPDX-License-Identifier: MIT */
+/* origin: musl src/math/sqrt.c. Ported to generic Rust algorithm in 2025, TG. */
+
+//! Generic square root algorithm.
+//!
+//! This routine operates around `m_u2`, a U.2 (fixed point with two integral bits) mantissa
+//! within the range [1, 4). A table lookup provides an initial estimate, then goldschmidt
+//! iterations at various widths are used to approach the real values.
+//!
+//! For the iterations, `r` is a U0 number that approaches `1/sqrt(m_u2)`, and `s` is a U2 number
+//! that approaches `sqrt(m_u2)`. Recall that m_u2 ∈ [1, 4).
+//!
+//! With Newton-Raphson iterations, this would be:
+//!
+//! - `w = r * r           w ~ 1 / m`
+//! - `u = 3 - m * w       u ~ 3 - m * w = 3 - m / m = 2`
+//! - `r = r * u / 2       r ~ r`
+//!
+//! (Note that the righthand column does not show anything analytically meaningful (i.e. r ~ r),
+//! since the value of performing one iteration is in reducing the error representable by `~`).
+//!
+//! Instead of Newton-Raphson iterations, Goldschmidt iterations are used to calculate
+//! `s = m * r`:
+//!
+//! - `s = m * r           s ~ m / sqrt(m)`
+//! - `u = 3 - s * r       u ~ 3 - (m / sqrt(m)) * (1 / sqrt(m)) = 3 - m / m = 2`
+//! - `r = r * u / 2       r ~ r`
+//! - `s = s * u / 2       s ~ s`
+//!
+//! The above is precise because it uses the original value `m`. There is also a faster version
+//! that performs fewer steps but does not use `m`:
+//!
+//! - `u = 3 - s * r       u ~ 3 - 1`
+//! - `r = r * u / 2       r ~ r`
+//! - `s = s * u / 2       s ~ s`
+//!
+//! Rounding errors accumulate faster with the second version, so it is only used for subsequent
+//! iterations within the same width integer. The first version is always used for the first
+//! iteration at a new width in order to avoid this accumulation.
+//!
+//! Goldschmidt has the advantage over Newton-Raphson that `sqrt(x)` and `1/sqrt(x)` are
+//! computed at the same time, i.e. there is no need to calculate `1/sqrt(x)` and invert it.
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/generic/trunc.rs
+Original source SHA-256: 3a3ca091cd1d750276601dc2dfeb2a8ff058636ea2b66a748c55a1804bc8f00a
+
+/* SPDX-License-Identifier: MIT
+ * origin: musl src/math/trunc.c */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/hypot.rs
+Original source SHA-256: 9fe0c6983bd0ab90984b40ff7905d17caee6423a772264846e6ae54e2e8f4403
+
+/* SPDX-License-Identifier: MIT */
+/* origin: core-math/src/binary64/hypot/hypot.c
+ * Copyright (c) 2022 Alexei Sibidanov.
+ * Ported to Rust in 2025, TG
+ * Approximate CORE-MATH commit: 8ea8ea35c518
+ */
+
+//! Euclidian distance via the pythagorean theorem (`√(x2 + y2)`).
+//!
+//! Per IEEE 754-2019:
+//!
+//! - Domain: `[−∞, +∞] × [−∞, +∞]`
+//! - `hypot(±0, ±0)` is +0
+//! - `hypot(±∞, qNaN)` is +∞
+//! - `hypot(qNaN, ±∞)` is +∞.
+//! - May raise overflow or underflow
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/j0.rs
+Original source SHA-256: 1cb991f0151a626744ad1832d4aedfaca681bcfcecc797de5ac5e9baf2342006
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_j0.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/* j0(x), y0(x)
+ * Bessel function of the first and second kinds of order zero.
+ * Method -- j0(x):
+ *      1. For tiny x, we use j0(x) = 1 - x^2/4 + x^4/64 - ...
+ *      2. Reduce x to |x| since j0(x)=j0(-x),  and
+ *         for x in (0,2)
+ *              j0(x) = 1-z/4+ z^2*R0/S0,  where z = x*x;
+ *         (precision:  |j0-1+z/4-z^2R0/S0 |<2**-63.67 )
+ *         for x in (2,inf)
+ *              j0(x) = sqrt(2/(pi*x))*(p0(x)*cos(x0)-q0(x)*sin(x0))
+ *         where x0 = x-pi/4. It is better to compute sin(x0),cos(x0)
+ *         as follow:
+ *              cos(x0) = cos(x)cos(pi/4)+sin(x)sin(pi/4)
+ *                      = 1/sqrt(2) * (cos(x) + sin(x))
+ *              sin(x0) = sin(x)cos(pi/4)-cos(x)sin(pi/4)
+ *                      = 1/sqrt(2) * (sin(x) - cos(x))
+ *         (To avoid cancellation, use
+ *              sin(x) +- cos(x) = -cos(2x)/(sin(x) -+ cos(x))
+ *          to compute the worse one.)
+ *
+ *      3 Special cases
+ *              j0(nan)= nan
+ *              j0(0) = 1
+ *              j0(inf) = 0
+ *
+ * Method -- y0(x):
+ *      1. For x<2.
+ *         Since
+ *              y0(x) = 2/pi*(j0(x)*(ln(x/2)+Euler) + x^2/4 - ...)
+ *         therefore y0(x)-2/pi*j0(x)*ln(x) is an even function.
+ *         We use the following function to approximate y0,
+ *              y0(x) = U(z)/V(z) + (2/pi)*(j0(x)*ln(x)), z= x^2
+ *         where
+ *              U(z) = u00 + u01*z + ... + u06*z^6
+ *              V(z) = 1  + v01*z + ... + v04*z^4
+ *         with absolute approximation error bounded by 2**-72.
+ *         Note: For tiny x, U/V = u0 and j0(x)~1, hence
+ *              y0(tiny) = u0 + (2/pi)*ln(tiny), (choose tiny<2**-27)
+ *      2. For x>=2.
+ *              y0(x) = sqrt(2/(pi*x))*(p0(x)*cos(x0)+q0(x)*sin(x0))
+ *         where x0 = x-pi/4. It is better to compute sin(x0),cos(x0)
+ *         by the method mentioned above.
+ *      3. Special cases: y0(0)=-inf, y0(x<0)=NaN, y0(inf)=0.
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/j0f.rs
+Original source SHA-256: de97374b6a0019fd8b3d1f553be1708018546491d3b4a5fc650ee2dcdfc9620e
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_j0f.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/j1.rs
+Original source SHA-256: e0a10746fd11a458d55ee61e758d9f016ff0f2203a07eb9907b5aca709a40469
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_j1.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/* j1(x), y1(x)
+ * Bessel function of the first and second kinds of order zero.
+ * Method -- j1(x):
+ *      1. For tiny x, we use j1(x) = x/2 - x^3/16 + x^5/384 - ...
+ *      2. Reduce x to |x| since j1(x)=-j1(-x),  and
+ *         for x in (0,2)
+ *              j1(x) = x/2 + x*z*R0/S0,  where z = x*x;
+ *         (precision:  |j1/x - 1/2 - R0/S0 |<2**-61.51 )
+ *         for x in (2,inf)
+ *              j1(x) = sqrt(2/(pi*x))*(p1(x)*cos(x1)-q1(x)*sin(x1))
+ *              y1(x) = sqrt(2/(pi*x))*(p1(x)*sin(x1)+q1(x)*cos(x1))
+ *         where x1 = x-3*pi/4. It is better to compute sin(x1),cos(x1)
+ *         as follow:
+ *              cos(x1) =  cos(x)cos(3pi/4)+sin(x)sin(3pi/4)
+ *                      =  1/sqrt(2) * (sin(x) - cos(x))
+ *              sin(x1) =  sin(x)cos(3pi/4)-cos(x)sin(3pi/4)
+ *                      = -1/sqrt(2) * (sin(x) + cos(x))
+ *         (To avoid cancellation, use
+ *              sin(x) +- cos(x) = -cos(2x)/(sin(x) -+ cos(x))
+ *          to compute the worse one.)
+ *
+ *      3 Special cases
+ *              j1(nan)= nan
+ *              j1(0) = 0
+ *              j1(inf) = 0
+ *
+ * Method -- y1(x):
+ *      1. screen out x<=0 cases: y1(0)=-inf, y1(x<0)=NaN
+ *      2. For x<2.
+ *         Since
+ *              y1(x) = 2/pi*(j1(x)*(ln(x/2)+Euler)-1/x-x/2+5/64*x^3-...)
+ *         therefore y1(x)-2/pi*j1(x)*ln(x)-1/x is an odd function.
+ *         We use the following function to approximate y1,
+ *              y1(x) = x*U(z)/V(z) + (2/pi)*(j1(x)*ln(x)-1/x), z= x^2
+ *         where for x in [0,2] (abs err less than 2**-65.89)
+ *              U(z) = U0[0] + U0[1]*z + ... + U0[4]*z^4
+ *              V(z) = 1  + v0[0]*z + ... + v0[4]*z^5
+ *         Note: For tiny x, 1/x dominate y1 and hence
+ *              y1(tiny) = -2/pi/tiny, (choose tiny<2**-54)
+ *      3. For x>=2.
+ *              y1(x) = sqrt(2/(pi*x))*(p1(x)*sin(x1)+q1(x)*cos(x1))
+ *         where x1 = x-3*pi/4. It is better to compute sin(x1),cos(x1)
+ *         by method mentioned above.
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/j1f.rs
+Original source SHA-256: b747ee287cdddd6d0d0d3f65a186e6605fe6b79bc9c55ffbd27a9205b7a3d07c
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_j1f.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/jn.rs
+Original source SHA-256: ba36d25d4bbada83aadb3b2986879b7d88b91adb7b502061d21bf96ff3942194
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_jn.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/*
+ * jn(n, x), yn(n, x)
+ * floating point Bessel's function of the 1st and 2nd kind
+ * of order n
+ *
+ * Special cases:
+ *      y0(0)=y1(0)=yn(n,0) = -inf with division by zero signal;
+ *      y0(-ve)=y1(-ve)=yn(n,-ve) are NaN with invalid signal.
+ * Note 2. About jn(n,x), yn(n,x)
+ *      For n=0, j0(x) is called,
+ *      for n=1, j1(x) is called,
+ *      for n<=x, forward recursion is used starting
+ *      from values of j0(x) and j1(x).
+ *      for n>x, a continued fraction approximation to
+ *      j(n,x)/j(n-1,x) is evaluated and then backward
+ *      recursion is used starting from a supposed value
+ *      for j(n,x). The resulting value of j(0,x) is
+ *      compared with the actual value to correct the
+ *      supposed value of j(n,x).
+ *
+ *      yn(n,x) is similar in all respects, except
+ *      that forward recursion is used for all
+ *      values of n>1.
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/jnf.rs
+Original source SHA-256: b3861e19644ae669fe17db81d91aeaee9c9f9051b59957ab674017684c98fe32
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_jnf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/k_cos.rs
+Original source SHA-256: d4867527877c846aa8e2a0b43cf06f03e2d94c321a548acaf8d5171c09ff4057
+
+// origin: FreeBSD /usr/src/lib/msun/src/k_cos.c
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunSoft, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/k_cosf.rs
+Original source SHA-256: 8f76089d014e217b96c9eca520271e64d467dc0d6542bf313dd70eb96c040f7f
+
+/* origin: FreeBSD /usr/src/lib/msun/src/k_cosf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ * Debugged and optimized by Bruce D. Evans.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+/* |cos(x) - c(x)| < 2**-34.1 (~[-5.37e-11, 5.295e-11]). */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/k_sin.rs
+Original source SHA-256: dfe6524cb2d530ec51eb1a2ab233aeb65b3f12177c1fb2f50f044ea41170f5d8
+
+// origin: FreeBSD /usr/src/lib/msun/src/k_sin.c
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunSoft, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/k_sinf.rs
+Original source SHA-256: cf0e8bbe8d73a6704b7f1f710f5b9d31f190f1c633e894d4f69c4e3bc359eba3
+
+/* origin: FreeBSD /usr/src/lib/msun/src/k_sinf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ * Optimized by Bruce D. Evans.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+/* |sin(x)/x - s(x)| < 2**-37.5 (~[-4.89e-12, 4.824e-12]). */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/k_tan.rs
+Original source SHA-256: dc3f8ece9187bbd65792a7d1068e676092e9c2a0886f28c80579f9bd94d744b7
+
+// origin: FreeBSD /usr/src/lib/msun/src/k_tan.c */
+//
+// ====================================================
+// Copyright 2004 Sun Microsystems, Inc.  All Rights Reserved.
+//
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+
+// kernel tan function on ~[-pi/4, pi/4] (except on -0), pi/4 ~ 0.7854
+// Input x is assumed to be bounded by ~pi/4 in magnitude.
+// Input y is the tail of x.
+// Input odd indicates whether tan (if odd = 0) or -1/tan (if odd = 1) is returned.
+//
+// Algorithm
+//      1. Since tan(-x) = -tan(x), we need only to consider positive x.
+//      2. Callers must return tan(-0) = -0 without calling here since our
+//         odd polynomial is not evaluated in a way that preserves -0.
+//         Callers may do the optimization tan(x) ~ x for tiny x.
+//      3. tan(x) is approximated by a odd polynomial of degree 27 on
+//         [0,0.67434]
+//                               3             27
+//              tan(x) ~ x + T1*x + ... + T13*x
+//         where
+//
+//              |tan(x)         2     4            26   |     -59.2
+//              |----- - (1+T1*x +T2*x +.... +T13*x    )| <= 2
+//              |  x                                    |
+//
+//         Note: tan(x+y) = tan(x) + tan'(x)*y
+//                        ~ tan(x) + (1+x*x)*y
+//         Therefore, for better accuracy in computing tan(x+y), let
+//                   3      2      2       2       2
+//              r = x *(T2+x *(T3+x *(...+x *(T12+x *T13))))
+//         then
+//                                  3    2
+//              tan(x+y) = x + (T1*x + (x *(r+y)+y))
+//
+//      4. For x in [0.67434,pi/4],  let y = pi/4 - x, then
+//              tan(x) = tan(pi/4-y) = (1-tan(y))/(1+tan(y))
+//                     = 1 - 2*(tan(y) - (tan(y)^2)/(1+tan(y)))
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/k_tanf.rs
+Original source SHA-256: 3381d2d4865bfc98e87aadb96bd8986f7691a389569a58fb1cb8db74fb5d9c20
+
+/* origin: FreeBSD /usr/src/lib/msun/src/k_tan.c */
+/*
+ * ====================================================
+ * Copyright 2004 Sun Microsystems, Inc.  All Rights Reserved.
+ *
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+/* |tan(x)/x - t(x)| < 2**-25.5 (~[-2e-08, 2e-08]). */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/lgamma_r.rs
+Original source SHA-256: 46d8850ccb72445128e5fd1c15235730298cd1a5e0726abd946f6d0d3605a12d
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_lgamma_r.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ *
+ */
+/* lgamma_r(x, signgamp)
+ * Reentrant version of the logarithm of the Gamma function
+ * with user provide pointer for the sign of Gamma(x).
+ *
+ * Method:
+ *   1. Argument Reduction for 0 < x <= 8
+ *      Since gamma(1+s)=s*gamma(s), for x in [0,8], we may
+ *      reduce x to a number in [1.5,2.5] by
+ *              lgamma(1+s) = log(s) + lgamma(s)
+ *      for example,
+ *              lgamma(7.3) = log(6.3) + lgamma(6.3)
+ *                          = log(6.3*5.3) + lgamma(5.3)
+ *                          = log(6.3*5.3*4.3*3.3*2.3) + lgamma(2.3)
+ *   2. Polynomial approximation of lgamma around its
+ *      minimun ymin=1.461632144968362245 to maintain monotonicity.
+ *      On [ymin-0.23, ymin+0.27] (i.e., [1.23164,1.73163]), use
+ *              Let z = x-ymin;
+ *              lgamma(x) = -1.214862905358496078218 + z^2*poly(z)
+ *      where
+ *              poly(z) is a 14 degree polynomial.
+ *   2. Rational approximation in the primary interval [2,3]
+ *      We use the following approximation:
+ *              s = x-2.0;
+ *              lgamma(x) = 0.5*s + s*P(s)/Q(s)
+ *      with accuracy
+ *              |P/Q - (lgamma(x)-0.5s)| < 2**-61.71
+ *      Our algorithms are based on the following observation
+ *
+ *                             zeta(2)-1    2    zeta(3)-1    3
+ * lgamma(2+s) = s*(1-Euler) + --------- * s  -  --------- * s  + ...
+ *                                 2                 3
+ *
+ *      where Euler = 0.5771... is the Euler constant, which is very
+ *      close to 0.5.
+ *
+ *   3. For x>=8, we have
+ *      lgamma(x)~(x-0.5)log(x)-x+0.5*log(2pi)+1/(12x)-1/(360x**3)+....
+ *      (better formula:
+ *         lgamma(x)~(x-0.5)*(log(x)-1)-.5*(log(2pi)-1) + ...)
+ *      Let z = 1/x, then we approximation
+ *              f(z) = lgamma(x) - (x-0.5)(log(x)-1)
+ *      by
+ *                                  3       5             11
+ *              w = w0 + w1*z + w2*z  + w3*z  + ... + w6*z
+ *      where
+ *              |w - f(z)| < 2**-58.74
+ *
+ *   4. For negative x, since (G is gamma function)
+ *              -x*G(-x)*G(x) = PI/sin(PI*x),
+ *      we have
+ *              G(x) = PI/(sin(PI*x)*(-x)*G(-x))
+ *      since G(-x) is positive, sign(G(x)) = sign(sin(PI*x)) for x<0
+ *      Hence, for x<0, signgam = sign(sin(PI*x)) and
+ *              lgamma(x) = log(|Gamma(x)|)
+ *                        = log(PI/(|x*sin(PI*x)|)) - lgamma(-x);
+ *      Note: one should avoid compute PI*(-x) directly in the
+ *            computation of sin(PI*(-x)).
+ *
+ *   5. Special Cases
+ *              lgamma(2+s) ~ s*(1-Euler) for tiny s
+ *              lgamma(1) = lgamma(2) = 0
+ *              lgamma(x) ~ -log(|x|) for tiny x
+ *              lgamma(0) = lgamma(neg.integer) = inf and raise divide-by-zero
+ *              lgamma(inf) = inf
+ *              lgamma(-inf) = inf (bug for bug compatible with C99!?)
+ *
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/lgammaf_r.rs
+Original source SHA-256: c77d6d8a3c9e6f306bfdad3930fb7d96d57fca8fa8c1b666fc65f4db18e190f4
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_lgammaf_r.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/log.rs
+Original source SHA-256: df5f4d1325e89621bfcd9cf7788d0d7e20a6ef7f429110fe35b370b3c9362615
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_log.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/* log(x)
+ * Return the logarithm of x
+ *
+ * Method :
+ *   1. Argument Reduction: find k and f such that
+ *                      x = 2^k * (1+f),
+ *         where  sqrt(2)/2 < 1+f < sqrt(2) .
+ *
+ *   2. Approximation of log(1+f).
+ *      Let s = f/(2+f) ; based on log(1+f) = log(1+s) - log(1-s)
+ *               = 2s + 2/3 s**3 + 2/5 s**5 + .....,
+ *               = 2s + s*R
+ *      We use a special Remez algorithm on [0,0.1716] to generate
+ *      a polynomial of degree 14 to approximate R The maximum error
+ *      of this polynomial approximation is bounded by 2**-58.45. In
+ *      other words,
+ *                      2      4      6      8      10      12      14
+ *          R(z) ~ Lg1*s +Lg2*s +Lg3*s +Lg4*s +Lg5*s  +Lg6*s  +Lg7*s
+ *      (the values of Lg1 to Lg7 are listed in the program)
+ *      and
+ *          |      2          14          |     -58.45
+ *          | Lg1*s +...+Lg7*s    -  R(z) | <= 2
+ *          |                             |
+ *      Note that 2s = f - s*f = f - hfsq + s*hfsq, where hfsq = f*f/2.
+ *      In order to guarantee error in log below 1ulp, we compute log
+ *      by
+ *              log(1+f) = f - s*(f - R)        (if f is not too large)
+ *              log(1+f) = f - (hfsq - s*(hfsq+R)).     (better accuracy)
+ *
+ *      3. Finally,  log(x) = k*ln2 + log(1+f).
+ *                          = k*ln2_hi+(f-(hfsq-(s*(hfsq+R)+k*ln2_lo)))
+ *         Here ln2 is split into two floating point number:
+ *                      ln2_hi + ln2_lo,
+ *         where n*ln2_hi is always exact for |n| < 2000.
+ *
+ * Special cases:
+ *      log(x) is NaN with signal if x < 0 (including -INF) ;
+ *      log(+INF) is +INF; log(0) is -INF with signal;
+ *      log(NaN) is that NaN with no signal.
+ *
+ * Accuracy:
+ *      according to an error analysis, the error is always less than
+ *      1 ulp (unit in the last place).
+ *
+ * Constants:
+ * The hexadecimal values are the intended ones for the following
+ * constants. The decimal values may be used, provided that the
+ * compiler will convert from decimal to binary accurately enough
+ * to produce the hexadecimal values shown.
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/log10.rs
+Original source SHA-256: 4a96dd2b6a2a505497f2bb7ea956a50491d068dab1b6055a573aec1724a52e40
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_log10.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/*
+ * Return the base 10 logarithm of x.  See log.c for most comments.
+ *
+ * Reduce x to 2^k (1+f) and calculate r = log(1+f) - f + f*f/2
+ * as in log.c, then combine and scale in extra precision:
+ *    log10(x) = (f - f*f/2 + r)/log(10) + k*log10(2)
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/log10f.rs
+Original source SHA-256: 784a576dd4a4071f4f67c670eb9b221cb03014818c4b2d71afbcbd2211431caf
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_log10f.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/*
+ * See comments in log10.c.
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/log1p.rs
+Original source SHA-256: bb8ce741e54d8f001d9c12450a14a663bd413014da2ade9ba1f5fbc9ff0c9a88
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_log1p.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/* double log1p(double x)
+ * Return the natural logarithm of 1+x.
+ *
+ * Method :
+ *   1. Argument Reduction: find k and f such that
+ *                      1+x = 2^k * (1+f),
+ *         where  sqrt(2)/2 < 1+f < sqrt(2) .
+ *
+ *      Note. If k=0, then f=x is exact. However, if k!=0, then f
+ *      may not be representable exactly. In that case, a correction
+ *      term is need. Let u=1+x rounded. Let c = (1+x)-u, then
+ *      log(1+x) - log(u) ~ c/u. Thus, we proceed to compute log(u),
+ *      and add back the correction term c/u.
+ *      (Note: when x > 2**53, one can simply return log(x))
+ *
+ *   2. Approximation of log(1+f): See log.c
+ *
+ *   3. Finally, log1p(x) = k*ln2 + log(1+f) + c/u. See log.c
+ *
+ * Special cases:
+ *      log1p(x) is NaN with signal if x < -1 (including -INF) ;
+ *      log1p(+INF) is +INF; log1p(-1) is -INF with signal;
+ *      log1p(NaN) is that NaN with no signal.
+ *
+ * Accuracy:
+ *      according to an error analysis, the error is always less than
+ *      1 ulp (unit in the last place).
+ *
+ * Constants:
+ * The hexadecimal values are the intended ones for the following
+ * constants. The decimal values may be used, provided that the
+ * compiler will convert from decimal to binary accurately enough
+ * to produce the hexadecimal values shown.
+ *
+ * Note: Assuming log() return accurate answer, the following
+ *       algorithm can be used to compute log1p(x) to within a few ULP:
+ *
+ *              u = 1+x;
+ *              if(u==1.0) return x ; else
+ *                         return log(u)*(x/(u-1.0));
+ *
+ *       See HP-15C Advanced Functions Handbook, p.193.
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/log1pf.rs
+Original source SHA-256: 8736222a9b9004b061f1339bb819c63c6b54414d4a01ef79d5f5a5f0a70677b5
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_log1pf.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/log2.rs
+Original source SHA-256: 1ec0cdd94bf4435ff0402d209089b1bdbcb1ba9a4cd5f77807f9c84cf534f980
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_log2.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/*
+ * Return the base 2 logarithm of x.  See log.c for most comments.
+ *
+ * Reduce x to 2^k (1+f) and calculate r = log(1+f) - f + f*f/2
+ * as in log.c, then combine and scale in extra precision:
+ *    log2(x) = (f - f*f/2 + r)/log(2) + k
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/log2f.rs
+Original source SHA-256: 7b3b17ba08df6b5a57dacf6f945bfe1a3c088bee0eb11e201ac5affc7f65925a
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_log2f.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+/*
+ * See comments in log2.c.
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/logf.rs
+Original source SHA-256: c7dfa5e89fcca0411624fdc594f64c62d5dfa3b91f061fcb7ac3aea18414f238
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_logf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/pow.rs
+Original source SHA-256: 581efb544966f82f440137757bbbdec99d873c3121efde0294493c4a9fc9d259
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_pow.c */
+/*
+ * ====================================================
+ * Copyright (C) 2004 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+// pow(x,y) return x**y
+//
+//                    n
+// Method:  Let x =  2   * (1+f)
+//      1. Compute and return log2(x) in two pieces:
+//              log2(x) = w1 + w2,
+//         where w1 has 53-24 = 29 bit trailing zeros.
+//      2. Perform y*log2(x) = n+y' by simulating multi-precision
+//         arithmetic, where |y'|<=0.5.
+//      3. Return x**y = 2**n*exp(y'*log2)
+//
+// Special cases:
+//      1.  (anything) ** 0  is 1
+//      2.  1 ** (anything)  is 1
+//      3.  (anything except 1) ** NAN is NAN
+//      4.  NAN ** (anything except 0) is NAN
+//      5.  +-(|x| > 1) **  +INF is +INF
+//      6.  +-(|x| > 1) **  -INF is +0
+//      7.  +-(|x| < 1) **  +INF is +0
+//      8.  +-(|x| < 1) **  -INF is +INF
+//      9.  -1          ** +-INF is 1
+//      10. +0 ** (+anything except 0, NAN)               is +0
+//      11. -0 ** (+anything except 0, NAN, odd integer)  is +0
+//      12. +0 ** (-anything except 0, NAN)               is +INF, raise divbyzero
+//      13. -0 ** (-anything except 0, NAN, odd integer)  is +INF, raise divbyzero
+//      14. -0 ** (+odd integer) is -0
+//      15. -0 ** (-odd integer) is -INF, raise divbyzero
+//      16. +INF ** (+anything except 0,NAN) is +INF
+//      17. +INF ** (-anything except 0,NAN) is +0
+//      18. -INF ** (+odd integer) is -INF
+//      19. -INF ** (anything) = -0 ** (-anything), (anything except odd integer)
+//      20. (anything) ** 1 is (anything)
+//      21. (anything) ** -1 is 1/(anything)
+//      22. (-anything) ** (integer) is (-1)**(integer)*(+anything**integer)
+//      23. (-anything except 0 and inf) ** (non-integer) is NAN
+//
+// Accuracy:
+//      pow(x,y) returns x**y nearly rounded. In particular
+//                      pow(integer,integer)
+//      always returns the correct integer provided it is
+//      representable.
+//
+// Constants :
+// The hexadecimal values are the intended ones for the following
+// constants. The decimal values may be used, provided that the
+// compiler will convert from decimal to binary accurately enough
+// to produce the hexadecimal values shown.
+//
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/powf.rs
+Original source SHA-256: 819971cb8e927d80113aded3cfe90dcd501c031e0eb1c562b58842fddd1751be
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_powf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/rem_pio2.rs
+Original source SHA-256: 931b9b421bc9c485893d5ab1b8c19c67c263ad5e1adab507a00abda5c773336d
+
+// origin: FreeBSD /usr/src/lib/msun/src/e_rem_pio2.c
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+//
+// Optimized by Bruce D. Evans. */
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/rem_pio2f.rs
+Original source SHA-256: e0716d71239538ef8cfa59292bb807d72d43a039a63822b18bd6c2f9a4027116
+
+/* origin: FreeBSD /usr/src/lib/msun/src/e_rem_pio2f.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ * Debugged and optimized by Bruce D. Evans.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/sin.rs
+Original source SHA-256: 9a3779d0b2a59cbafcfba0cf1c07ef42747f145b1e149c7d4ad3beb2bbda3fa0
+
+// origin: FreeBSD /usr/src/lib/msun/src/s_sin.c */
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/sincos.rs
+Original source SHA-256: a9c414e828c2e78b6bce4d5e4237b1baa93e81d78421aed5cedeab43df64067f
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_sin.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/sincosf.rs
+Original source SHA-256: af8b801067bc05f25763c2c6530330540bc5cb2d6014f400ec41c2706d62c537
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/sinf.rs
+Original source SHA-256: b17db34d5da39a0f336d831abcb700fab69402c915321823870f1845e66c03d2
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_sinf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ * Optimized by Bruce D. Evans.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/support/modular.rs
+Original source SHA-256: cf6a562d6bdf16336f31d41c59e828ad47f85388849d20d6d3b59fc1c3e388a2
+
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
+
+//! This module provides accelerated modular multiplication by large powers
+//! of two, which is needed for computing floating point remainders in `fmod`
+//! and similar functions.
+//!
+//! To keep the equations somewhat concise, the following conventions are used:
+//!  - all integer operations are in the mathematical sense, without overflow
+//!  - concatenation means multiplication: `2xq = 2 * x * q`
+//!  - `R = (1 << U::BITS)` is the modulus of wrapping arithmetic in `U`
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/tan.rs
+Original source SHA-256: 2ea87ca18526753db6d149635ed6c895c8fbafd1e0fa7a9c04f7dc44b4eae986
+
+// origin: FreeBSD /usr/src/lib/msun/src/s_tan.c */
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+
+
+==============================================================================
+Source: https://github.com/rust-lang/rust/blob/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/compiler-builtins/libm/src/math/tanf.rs
+Original source SHA-256: f7140c4193a57709acde5d290c8f83435562da42924c54cab0aa3a4f26095190
+
+/* origin: FreeBSD /usr/src/lib/msun/src/s_tanf.c */
+/*
+ * Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+ * Optimized by Bruce D. Evans.
+ */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+
+===== compiler-rt CREDITS.TXT referenced by compiler-builtins license =====
+Source: https://github.com/llvm/llvm-project/blob/1b1dc505057322f4fa1110ef4f53c44347f52986/compiler-rt/CREDITS.TXT
+The exact Rust compiler-builtins README pins its compiler-rt port source at
+that revision. This file is byte-identical at Rust's LLVM submodule revision
+1b9c0d5ff9bbe7634aead059efe6b11a7eeba145; no whole LLVM/compiler inventory
+is asserted to be linked into Minimap.
+Original text SHA-256: a9901f47a089da41e4690682d00ce4cedaa2baf41fedbe79beee366d43ac2461
+
+This file is a partial list of people who have contributed to the LLVM/CompilerRT
+project.  If you have contributed a patch or made some other contribution to
+LLVM/CompilerRT, please submit a patch to this file to add yourself, and it will be
+done!
+
+The list is sorted by surname and formatted to allow easy grepping and
+beautification by scripts.  The fields are: name (N), email (E), web-address
+(W), PGP key ID and fingerprint (P), description (D), and snail-mail address
+(S).
+
+N: Craig van Vliet
+E: cvanvliet@auroraux.org
+W: http://www.auroraux.org
+D: Code style and Readability fixes.
+
+N: Edward O'Callaghan
+E: eocallaghan@auroraux.org
+W: http://www.auroraux.org
+D: CMake'ify Compiler-RT build system
+D: Maintain Solaris & AuroraUX ports of Compiler-RT
+
+N: Howard Hinnant
+E: hhinnant@apple.com
+D: Architect and primary author of compiler-rt
+
+N: Guan-Hong Liu
+E: koviankevin@hotmail.com
+D: IEEE Quad-precision functions
+
+N: Joerg Sonnenberger
+E: joerg@NetBSD.org
+D: Maintains NetBSD port.
+
+N: Matt Thomas
+E: matt@NetBSD.org
+D: ARM improvements.
 

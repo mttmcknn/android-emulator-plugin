@@ -1,4 +1,4 @@
-Android Emulator Plugin
+Android™ Emulator Plugin
 Copyright 2026 Matt McKenna
 First-party code is licensed under Apache-2.0; see LICENSE.
 Third-party works retain their own licenses. This notice does not relicense them.
@@ -22,18 +22,20 @@ ISC; see runtime/core/vendor/LUCIDE-LICENSE.
 Source: https://lucide.dev/icons/logs
 
 Android robot artwork (modified in logos and tool/panel icons)
+Android is a trademark of Google LLC.
 The Android robot is reproduced or modified from work created and shared by
 Google and used according to terms described in the Creative Commons 3.0
 Attribution License: https://creativecommons.org/licenses/by/3.0/
 Source: https://developer.android.com/distribute/marketing-tools/brand-guidelines
 Modifications include redrawing, scaling, color and combining with a phone.
-Android is a trademark of Google LLC.
 This plugin is not made or endorsed by Google or OpenAI.
 
 Only the Android scrcpy server is bundled: desktop scrcpy, FFmpeg, SDL, ADB,
 the Android SDK/emulator/system images and Node.js are not distributed here.
 Minimap and Google's Android CLI may be downloaded separately at runtime;
-Minimap's first-party and audited application dependency notices are included in
-runtime/core/vendor/MINIMAP-LICENSES.txt and retained beside managed installs.
+Minimap's first-party, application dependency and Rust runtime notices are in
+runtime/core/vendor/MINIMAP-LICENSES.txt and
+runtime/core/vendor/MINIMAP-RUST-COPYRIGHT-library.html; both accompany managed
+installs. The Rust inventory is an upstream standard-library notice superset.
 See the source repository's LICENSE-AUDIT.md for scope and unresolved issues:
 https://github.com/mttmcknn/android-emulator-plugin/blob/main/LICENSE-AUDIT.md

@@ -1,4 +1,4 @@
-# Android Emulator Plugin
+# Android™ Emulator Plugin
 
 Run, control, and test Android apps from Codex. Each chat gets its own emulator and a live panel where you can watch the agent work or take control.
 
@@ -35,6 +35,8 @@ The **Android Emulators** sidebar manages running devices and saved virtual devi
 - Node.js 20 or newer. The plugin uses Codex's bundled runtime when available.
 
 Use an existing Android Virtual Device or ask the agent to create one. Set `ANDROID_HOME` if your SDK is installed in a custom location. Screen memory prepares its dependencies on first use and needs internet access for missing downloads.
+
+Screen memory may download Minimap and [Google's Android CLI](https://developer.android.com/tools/agents/android-cli/download) directly from their upstream servers. The CLI launcher can download its own runtime and is invoked even during version checks. Review the applicable [Android SDK terms](https://developer.android.com/studio/terms) before first use; users handle their own agreement. To use installations you manage yourself, set `ANDROID_EMULATOR_MINIMAP` and `ANDROID_EMULATOR_ANDROID_CLI` to those executables. These tools are downloaded separately and are not included in the plugin archive.
 
 ## Install
 
@@ -76,6 +78,6 @@ The bundled, unmodified **scrcpy Android server 5.0.1** is licensed under Apache
 
 The Logcat icon uses [Lucide's Logs icon](https://lucide.dev/icons/logs) under the [ISC license](runtime/core/vendor/LUCIDE-LICENSE).
 
-The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the [Creative Commons 3.0 Attribution License](https://creativecommons.org/licenses/by/3.0/). Modifications include redrawing, scaling, color and combining with a phone. Android is a trademark of Google LLC. This plugin is not made or endorsed by Google or OpenAI.
+Android is a trademark of Google LLC. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the [Creative Commons 3.0 Attribution License](https://creativecommons.org/licenses/by/3.0/). Modifications include redrawing, scaling, color and combining with a phone. This plugin is not made or endorsed by Google or OpenAI.
 
 See [NOTICE](NOTICE) for distributed attribution and [LICENSE-AUDIT.md](LICENSE-AUDIT.md) for the release inventory, external tools, managed downloads, authoritative sources and unresolved publication risks. The audit is evidence for this artifact, not a legal guarantee.

@@ -108,6 +108,9 @@ test('cancelled installs are atomic and a later explicit retry succeeds', async 
   const notices = path.join(path.dirname(ensured.minimap), 'LICENSES.txt');
   assert.deepEqual(await fs.readFile(notices), await fs.readFile(new URL('../runtime/core/vendor/MINIMAP-LICENSES.txt', import.meta.url)));
   assert.equal((await fs.stat(notices)).mode & 0o777, 0o600);
+  const rustNotices = path.join(path.dirname(ensured.minimap), 'MINIMAP-RUST-COPYRIGHT-library.html');
+  assert.deepEqual(await fs.readFile(rustNotices), await fs.readFile(new URL('../runtime/core/vendor/MINIMAP-RUST-COPYRIGHT-library.html', import.meta.url)));
+  assert.equal((await fs.stat(rustNotices)).mode & 0o777, 0o600);
 });
 
 test('concurrent explicit installs share one download sequence', async t => {
@@ -162,9 +165,12 @@ test('an incompatible PATH installation is replaced locally and the managed vers
   const first = await createNavigationDependencies(options).ensure();
   assert.notEqual(first.minimap, old); assert.equal(downloads, 1);
   const notices = path.join(path.dirname(first.minimap), 'LICENSES.txt');
+  const rustNotices = path.join(path.dirname(first.minimap), 'MINIMAP-RUST-COPYRIGHT-library.html');
   await fs.rm(notices);
+  await fs.rm(rustNotices);
   const restarted = await createNavigationDependencies(options).ensure();
   assert.equal(restarted.minimap, first.minimap); assert.equal(downloads, 1);
   assert.equal(await fs.readFile(old, 'utf8'), 'minimap');
   assert.deepEqual(await fs.readFile(notices), await fs.readFile(new URL('../runtime/core/vendor/MINIMAP-LICENSES.txt', import.meta.url)), 'older managed caches gain notices without redownloading');
+  assert.deepEqual(await fs.readFile(rustNotices), await fs.readFile(new URL('../runtime/core/vendor/MINIMAP-RUST-COPYRIGHT-library.html', import.meta.url)), 'older managed caches gain Rust notices without redownloading');
 });
