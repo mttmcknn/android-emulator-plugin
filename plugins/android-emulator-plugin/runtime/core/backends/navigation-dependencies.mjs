@@ -172,15 +172,15 @@ function minimapFromArchive(archive) {
   throw new Error('Minimap release archive did not contain its executable.');
 }
 
-async function atomicWrite(file, bytes, signal) {
+async function atomicWrite(file, bytes, signal, mode = 0o700) {
   checkAbort(signal);
   await fs.mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
   const temporary = path.join(path.dirname(file), `.${path.basename(file)}.${randomUUID()}.tmp`);
   try {
-    const handle = await fs.open(temporary, 'wx', 0o700);
+    const handle = await fs.open(temporary, 'wx', mode);
     try { await handle.writeFile(bytes); } finally { await handle.close(); }
     checkAbort(signal);
-    await fs.chmod(temporary, 0o700);
+    await fs.chmod(temporary, mode);
     await fs.rename(temporary, file);
   } catch (error) {
     await fs.rm(temporary, { force: true }).catch(() => {});
@@ -274,7 +274,13 @@ export function createNavigationDependencies({
     checksum(archive, entry.sha256);
     const binary = minimapFromArchive(archive);
     if (!binary.length || binary.length > MAX_MINIMAP_ARCHIVE) throw new Error('Minimap release executable exceeds its size limit.');
+    await retainMinimapLicenses(signal);
     await atomicWrite(locations.minimap, binary, signal);
+  }
+
+  async function retainMinimapLicenses(signal) {
+    const notices = await fs.readFile(new URL('../vendor/MINIMAP-LICENSES.txt', import.meta.url));
+    await atomicWrite(path.join(path.dirname(locations.minimap), 'LICENSES.txt'), notices, signal, 0o600);
   }
 
   async function installAndroid(signal) {
@@ -294,7 +300,11 @@ export function createNavigationDependencies({
     ]).then(([minimap, android]) => ({ minimap, android }));
     for (const dependency of ['minimap', 'android']) {
       const current = state[dependency];
-      if (current.available) continue;
+      if (current.available) {
+        // Upgrade older managed caches that were installed without notices.
+        if (dependency === 'minimap' && current.source === 'managed') await retainMinimapLicenses(signal);
+        continue;
+      }
       if (current.override) throw new Error(`${dependency === 'minimap' ? 'ANDROID_EMULATOR_MINIMAP' : 'ANDROID_EMULATOR_ANDROID_CLI'} is configured but incompatible; it will not be replaced automatically.`);
       if (dependency === 'minimap') await installMinimap(signal);
       else await installAndroid(signal);

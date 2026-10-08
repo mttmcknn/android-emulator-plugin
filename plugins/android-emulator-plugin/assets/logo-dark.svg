@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <desc>The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License: https://creativecommons.org/licenses/by/3.0/. Modified by redrawing, scaling, color and combining with a phone. Android is a trademark of Google LLC.</desc>
   <rect width="64" height="64" rx="14" fill="#073042"/>
   <rect x="19.5" y="9.5" width="25" height="45" rx="6" fill="none" stroke="#3DDC84" stroke-width="3"/>
   <path d="M23.5 41a8.5 8.5 0 0 1 17 0z" fill="#3DDC84"/>

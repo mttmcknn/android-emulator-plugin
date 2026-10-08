@@ -30,7 +30,10 @@ const GLYPHS = {
 };
 
 export function iconFor(glyph) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" stroke-linejoin="round">${GLYPHS[glyph]}</svg>`;
+  const attribution = glyph === 'android'
+    ? '<desc>The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License: https://creativecommons.org/licenses/by/3.0/. Modified by redrawing and scaling. Android is a trademark of Google LLC.</desc>'
+    : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" stroke-linejoin="round">${attribution}${GLYPHS[glyph]}</svg>`;
   return [{ src: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`, mimeType: 'image/svg+xml', sizes: ['20x20'] }];
 }
 

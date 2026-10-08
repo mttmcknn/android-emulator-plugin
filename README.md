@@ -66,14 +66,16 @@ codex plugin marketplace add "$PWD"
 codex plugin add android-emulator-plugin@mttmcknn
 ```
 
-The shared service and UI live in `runtime/core`, MCP support in `runtime/mcp`, and the Codex integration in `runtime/hosts/codex`. Edit source under `runtime/`, then rebuild the generated plugin bundle. Capture, device control, streaming, recording, and navigation implementations can be selected per chat.
+The shared service and UI live in `runtime/core`, MCP support in `runtime/mcp`, and the Codex integration in `runtime/hosts/codex`. Edit source under `runtime/`, then rebuild the generated plugin bundle. Root `LICENSE` and `NOTICE` are authoritative; the build copies them into the runtime and installable plugin so retained helpers keep their notices. Capture, device control, streaming, recording, and navigation implementations can be selected per chat.
 
 ## License and attribution
 
 Apache-2.0. See [LICENSE](LICENSE).
 
-The bundled scrcpy server is licensed under Apache-2.0. Its [source information](runtime/core/vendor/SCRCPY-SOURCE.md) and [license](runtime/core/vendor/SCRCPY-LICENSE) are included.
+The bundled, unmodified **scrcpy Android server 5.0.1** is licensed under Apache-2.0. Its [source information and binary component inventory](runtime/core/vendor/SCRCPY-SOURCE.md), [license](runtime/core/vendor/SCRCPY-LICENSE), and component notices are included. The plugin uses its own client and browser decoder; desktop scrcpy, FFmpeg, SDL and ADB are not bundled.
 
 The Logcat icon uses [Lucide's Logs icon](https://lucide.dev/icons/logs) under the [ISC license](runtime/core/vendor/LUCIDE-LICENSE).
 
-The Android robot is used under the Creative Commons 3.0 Attribution License. Android is a trademark of Google LLC. This plugin is not made or endorsed by Google or OpenAI.
+The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the [Creative Commons 3.0 Attribution License](https://creativecommons.org/licenses/by/3.0/). Modifications include redrawing, scaling, color and combining with a phone. Android is a trademark of Google LLC. This plugin is not made or endorsed by Google or OpenAI.
+
+See [NOTICE](NOTICE) for distributed attribution and [LICENSE-AUDIT.md](LICENSE-AUDIT.md) for the release inventory, external tools, managed downloads, authoritative sources and unresolved publication risks. The audit is evidence for this artifact, not a legal guarantee.

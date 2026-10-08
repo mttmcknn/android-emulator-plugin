@@ -78,12 +78,19 @@ test('retainRuntime preserves a complete helper bundle after its throwaway sourc
   const state = path.join(root, 'state');
   const retained = retainRuntime(source, state);
   for (const relative of [
+    'LICENSE',
+    'NOTICE',
     'hosts/codex/daemon.mjs',
     'core/lib/device.mjs',
     'core/web/index.html',
     'core/web/app.js',
-    'core/vendor/scrcpy-server-v5.0',
+    'core/vendor/scrcpy-server-v5.0.1',
     'core/vendor/SCRCPY-LICENSE',
+    'core/vendor/SCRCPY-NOTICES.md',
+    'core/vendor/KOTLIN-LICENSE',
+    'core/vendor/KOTLIN-BOOST-LICENSE',
+    'core/vendor/KOTLIN-THREETENBP-LICENSE',
+    'core/vendor/MINIMAP-LICENSES.txt',
     'core/package.json',
   ]) assert.ok(fs.statSync(path.join(retained, relative)).isFile(), relative);
 

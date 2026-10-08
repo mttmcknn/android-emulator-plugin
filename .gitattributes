@@ -1,0 +1,3 @@
+# Retain original upstream license line endings and final blank lines.
+runtime/core/vendor/MINIMAP-LICENSES.txt -text whitespace=cr-at-eol,-blank-at-eof
+plugins/android-emulator-plugin/runtime/core/vendor/MINIMAP-LICENSES.txt -text whitespace=cr-at-eol,-blank-at-eof

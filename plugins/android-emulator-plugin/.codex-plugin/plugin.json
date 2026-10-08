@@ -1,6 +1,6 @@
 {
   "name": "android-emulator-plugin",
-  "version": "2026.10.7",
+  "version": "2026.10.8",
   "description": "Use an Android emulator in each Codex chat.",
   "author": {
     "name": "Matt McKenna",
