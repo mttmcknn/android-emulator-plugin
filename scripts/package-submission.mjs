@@ -16,6 +16,9 @@ const parse = (files, file) => JSON.parse(files.get(file).bytes.toString('utf8')
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 function clean() { assert.equal(git('status', '--porcelain=v1', '--untracked-files=all'), '', 'Commit source changes before packaging; the release ZIP must have a clean source commit.'); }
 function run(...args) { execFileSync(process.execPath, args, { cwd: root, stdio: 'inherit' }); }
+export function committedBytes(file, repository = root) {
+  return execFileSync('git', ['cat-file', 'blob', `HEAD:${file}`], { cwd: repository, maxBuffer: 16 * 1024 * 1024 });
+}
 export function committedFiles(repository = root, prefix = sourceDirectory) {
   const files = new Map();
   const tree = execFileSync('git', ['ls-tree', '-r', '-z', 'HEAD', '--', prefix], { cwd: repository, encoding: 'utf8' });
@@ -110,7 +113,7 @@ export function validatePackage(files, original) {
   assert.equal(servers.length, 1); assert.equal(servers[0][0], 'emulator');
   const server = servers[0][1]; contained(server.command, files);
   for (const arg of server.args ?? []) if (arg.startsWith('./')) contained(arg, files);
-  assert.deepEqual(mcp, JSON.parse(fs.readFileSync(path.join(root, sourceDirectory, '.mcp.json'), 'utf8')), 'MCP behavior must stay intact');
+  assert.deepEqual(mcp, JSON.parse(committedBytes(`${sourceDirectory}.mcp.json`)), 'MCP behavior must stay intact');
   const skills = [...files.keys()].filter(p => /^skills\/[^/]+\/SKILL\.md$/.test(p)); assert(skills.length > 0);
   for (const file of skills) {
     const text = files.get(file).bytes.toString('utf8'); const header = text.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -127,7 +130,7 @@ export function validatePackage(files, original) {
   assert(cases.negative.every(test => test.description?.trim() && test.prompt?.trim()));
   for (const tool of TOOLS) for (const field of ['readOnlyHint', 'openWorldHint', 'destructiveHint']) assert.equal(typeof tool.annotations[field], 'boolean');
   for (const file of ['LICENSE', 'NOTICE']) for (const location of [file, `runtime/${file}`]) {
-    assert(files.get(location)?.bytes.equals(fs.readFileSync(path.join(root, file))), `Legal copy mismatch: ${location}`);
+    assert(files.get(location)?.bytes.equals(committedBytes(file)), `Legal copy mismatch: ${location}`);
   }
   assert.equal(hash(files.get('runtime/core/vendor/scrcpy-server-v5.0.1').bytes), '764eb6f79811d5211fe9df341120882ba9994c7a61b897d7bf3fb662e53bc536');
   assert.equal(hash(files.get('runtime/core/vendor/MINIMAP-RUST-COPYRIGHT-library.html').bytes), '5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27');
@@ -138,7 +141,7 @@ function main() {
   const args = process.argv.slice(2); const options = {};
   while (args.length) { const key = args.shift(); assert(['--version', '--tag'].includes(key) && args.length, `Unknown/incomplete option: ${key}`); options[key] = args.shift(); }
   clean();
-  const commit = git('rev-parse', 'HEAD'); const original = JSON.parse(fs.readFileSync(path.join(root, sourceDirectory, '.codex-plugin/plugin.json'), 'utf8'));
+  const commit = git('rev-parse', 'HEAD'); const original = JSON.parse(committedBytes(`${sourceDirectory}.codex-plugin/plugin.json`));
   if (options['--version']) assert.equal(options['--version'], original.version, 'Requested version differs from manifest');
   if (options['--tag']) {
     assert.equal(options['--tag'], `v${original.version}`, 'Tag must be v<manifest version>');
@@ -151,10 +154,10 @@ function main() {
   // Git's committed modes and blobs preserve provenance even when a host ignores
   // mode changes or has extra group/world execute bits invisible to Git status.
   const files = committedFiles();
-  const metadata = JSON.parse(fs.readFileSync(path.join(root, 'release/submission.json'), 'utf8'));
+  const metadata = JSON.parse(committedBytes('release/submission.json'));
   files.set('.codex-plugin/plugin.json', { bytes: Buffer.from(`${JSON.stringify(authorManifest(original, metadata), null, 2)}\n`), mode: 0o100644 });
-  files.set('LICENSE-AUDIT.md', { bytes: fs.readFileSync(path.join(root, 'LICENSE-AUDIT.md')), mode: 0o100644 });
-  files.set('PREPARATION.md', { bytes: Buffer.from(`Source commit: ${commit}\n\n${fs.readFileSync(path.join(root, 'SUBMISSION.md'), 'utf8')}`), mode: 0o100644 });
+  files.set('LICENSE-AUDIT.md', { bytes: committedBytes('LICENSE-AUDIT.md'), mode: 0o100644 });
+  files.set('PREPARATION.md', { bytes: Buffer.from(`Source commit: ${commit}\n\n${committedBytes('SUBMISSION.md').toString('utf8')}`), mode: 0o100644 });
   const initial = validatePackage(files, original); const prefix = `${original.name}/`;
   const entries = [...files].map(([name, file]) => ({ name: prefix + name, bytes: file.bytes, executable: Boolean(file.mode & 0o111) }));
   const zip = createZip(entries); const actual = inspectZip(zip); const unpacked = new Map();

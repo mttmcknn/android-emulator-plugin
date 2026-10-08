@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import test from 'node:test';
-import { authorManifest, committedFiles, contrast, semanticVersion, validatePackage } from '../scripts/package-submission.mjs';
+import { authorManifest, committedBytes, committedFiles, contrast, semanticVersion, validatePackage } from '../scripts/package-submission.mjs';
 import { crc32, createZip, inspectZip } from '../scripts/submission-zip.mjs';
 import { TOOLS } from '../runtime/hosts/codex/tools.mjs';
 
@@ -110,5 +110,8 @@ test('packaging uses committed bytes and executable modes across clean host perm
     git('config', 'core.filemode', 'false'); fs.chmodSync(launcher, 0o644);
     assert.equal(git('status', '--porcelain'), ''); assert.deepEqual(archive(), before);
     assert.equal(committedFiles(repository, 'plugin/').get('launch').mode, 0o100755);
+    git('config', 'core.autocrlf', 'true'); fs.unlinkSync(notice); git('checkout', '--', 'plugin/NOTICE');
+    assert.equal(fs.readFileSync(notice, 'utf8'), 'notice\r\n'); assert.equal(git('status', '--porcelain'), '');
+    assert.equal(committedBytes('plugin/NOTICE', repository).toString('utf8'), 'notice\n'); assert.deepEqual(archive(), before);
   } finally { fs.rmSync(repository, { recursive: true, force: true }); }
 });
