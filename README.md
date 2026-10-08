@@ -70,6 +70,8 @@ codex plugin add android-emulator-plugin@mttmcknn
 
 The shared service and UI live in `runtime/core`, MCP support in `runtime/mcp`, and the Codex integration in `runtime/hosts/codex`. Edit source under `runtime/`, then rebuild the generated plugin bundle. Root `LICENSE` and `NOTICE` are authoritative; the build copies them into the runtime and installable plugin so retained helpers keep their notices. Capture, device control, streaming, recording, and navigation implementations can be selected per chat.
 
+For a repeatable release ZIP from a clean committed checkout, run `npm run package:submission`. It builds, runs local tests, checks the actual archive and writes the ZIP, checksum and readiness report to `dist/`. [Submission preparation](SUBMISSION.md) explains the author copy and remaining registry requirements. The [manual GitHub workflow](GITHUB-RELEASES.md) defaults to artifacts and can attach them to an explicitly requested draft release; pushes do not trigger it.
+
 ## License and attribution
 
 Apache-2.0. See [LICENSE](LICENSE).

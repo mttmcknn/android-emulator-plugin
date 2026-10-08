@@ -9,6 +9,7 @@
   "scripts": {
     "build": "node scripts/build-plugin.mjs",
     "check:bundle": "node scripts/build-plugin.mjs --check",
+    "package:submission": "node scripts/package-submission.mjs",
     "test": "node scripts/build-plugin.mjs --check && node --test test/*.test.mjs"
   }
 }

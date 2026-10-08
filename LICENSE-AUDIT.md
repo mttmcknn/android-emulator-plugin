@@ -97,6 +97,14 @@ No third-party work was relicensed, no top-level license changed, and no agreeme
 
 ## Remote CI boundary
 
+This inventory describes the original audit snapshot below. A later read-only fetch
+found remote main `a30889c255a95f23d13bd88918083a7b77f5d424`, changing only the plugin's
+website URL. That update is incorporated in the local submission branch. The branch
+also prepares a `workflow_dispatch`-only packaging workflow; it has no push/PR/tag
+trigger and has not been pushed or executed. Its default is artifact-only, with an
+explicit optional unpublished draft release. The local packaging command needs no
+remote CI. These preparations do not resolve unknown external CI subscriptions.
+
 Read-only GitHub API inspection on 2026-10-08 found zero existing pull requests (open or closed), zero Actions workflows, zero Actions runs, zero repository webhooks, no rulesets, and no status/check runs on remote main `46312662da5105863137434a6bbc296548cfbd64`. The only remote branch is main, and its tree has no `.github` directory. Actions is enabled; it was not disabled or changed. There is consequently no existing PR to update and no visible repository Actions workflow or repository hook that would run from this push.
 
 That does not verify **every** possible remote CI trigger: [GitHub App webhooks](https://docs.github.com/en/webhooks/types-of-webhooks) are configured separately from repository hooks, and external CI services/app-level subscriptions are not exhaustively exposed by this inventory. [Push events](https://docs.github.com/en/webhooks/webhook-events-and-payloads#push) can be delivered to such integrations. Safe zero-CI publication therefore cannot be established from the available read-only evidence. The exact blocker to pushing is unverified external/app CI configuration, not a known running Actions workflow. No push, PR creation, workflow dispatch, release publication or repository/account setting change was performed. Local commits and archives remain available for review.

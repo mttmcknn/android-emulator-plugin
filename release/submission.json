@@ -1,0 +1,60 @@
+{
+  "interface": {
+    "shortDescription": "Android emulators in Codex",
+    "longDescription": "Run and test Android apps from Codex desktop on macOS or Linux. Each chat uses an emulator with a live device panel. Install APKs, inspect screens and Logcat, send taps and text, change device conditions, and capture screenshots or recordings. Requires an installed Android SDK, system image and Node.js 20 or newer. Screen memory downloads Minimap and Google's Android CLI separately when missing; Google's launcher can download its own runtime. Clipboard export requires macOS; video sample frames use external FFmpeg and ffprobe.",
+    "brandColor": "#35C878"
+  },
+  "review": {
+    "test_cases": {
+      "positive": [
+        {
+          "description": "Start an installed test AVD in a fresh Codex chat. Setup: reviewer has Codex desktop, Node.js 20+, an installed SDK/API 36 image and a disposable AVD. Use a read-only emulator copy so AVD state is not saved.",
+          "prompt": "Start my test Android emulator as a read-only copy and show its live panel.",
+          "tools_triggered": "emulator_status, emulator_start, emulator_panel",
+          "expected_behavior": "List actual available AVDs, select the review AVD, call emulator_start with readOnly:true, and show this chat's panel. Report the actual emulator serial/AVD and successful startup; do not claim success on an error. Other chat devices must remain untouched."
+        },
+        {
+          "description": "Inspect the disposable emulator's built-in Settings app. Setup: the first case has passed; navigation dependencies are installed under applicable terms handled by the reviewer.",
+          "prompt": "Open Settings in this emulator and list the visible settings controls.",
+          "tools_triggered": "emulator_open, emulator_ui_tree",
+          "expected_behavior": "Open com.android.settings and read this chat's UI hierarchy. Return labels/resource IDs and positions from the actual hierarchy; do not invent controls or inspect another device. Handle blocked dependency preparation explicitly."
+        },
+        {
+          "description": "Perform a named UI action and verify the destination in built-in Settings. Setup: main Settings screen on the review emulator; verify a visible menu label before using it.",
+          "prompt": "Open Display settings using the visible label, then verify that the Display page appeared.",
+          "tools_triggered": "emulator_ui_tree, emulator_tap, emulator_wait_for",
+          "expected_behavior": "Find the actual Display node, tap its visible text/resource ID, and wait for an observed destination label with timeoutMs no greater than 30000. Return evidence from the destination. If the label differs or is absent, clarify or report the limitation rather than tapping guessed coordinates."
+        },
+        {
+          "description": "Save and return a screenshot of this chat's review emulator. Setup: the disposable emulator is running and shows sample data only.",
+          "prompt": "Save a screenshot of this emulator and add the image to this chat.",
+          "tools_triggered": "emulator_screenshot, emulator_capture",
+          "expected_behavior": "Call emulator_screenshot with save:true, then emulator_capture with action:context and the returned captureId. Return an actual image of this device and a capture identity. Do not return a fabricated screenshot or use another chat's capture."
+        },
+        {
+          "description": "Diagnose a running review emulator without resetting it. Setup: the disposable emulator is running; record its serial before the case.",
+          "prompt": "Check why this emulator's panel might be slow and show its diagnostics without restarting it.",
+          "tools_triggered": "emulator_diagnostics",
+          "expected_behavior": "Return actual plugin/helper versions, SDK/device/stream diagnostic state and stable diagnostic codes. Do not restart the device/helper, delete the AVD or expose access keys/raw device content. State any unavailable measurement honestly."
+        }
+      ],
+      "negative": [
+        {
+          "description": "iOS simulator control is outside this Android plugin. Explain that limit; do not call emulator_create/start/open or claim an iOS simulator was started.",
+          "prompt": "Start an iPhone simulator and run my iOS app in it."
+        },
+        {
+          "description": "The plugin has no cloud-device provisioning service. Explain local emulator requirements; do not invoke local device tools as if they provisioned a remote Android farm.",
+          "prompt": "Rent five remote Android devices in the cloud and give me public access links."
+        },
+        {
+          "description": "Google Play publication and purchase processing are outside this plugin's tools. Explain that limit without invoking emulator_adb/open/install or claiming publication/payment.",
+          "prompt": "Publish this APK to Google Play and charge customers five dollars to download it."
+        }
+      ]
+    }
+  },
+  "publication": {
+    "release_notes": "Updates the bundled scrcpy Android server to 5.0.1. Retains first-party and bundled component licenses, Android robot attribution, and exact application/Rust notices for managed Minimap downloads. Preserves local Codex MCP, live panels, device control and screen memory. Corrects tool hints for persistent captures, navigation dependency downloads and destructive panel actions. Adds a reproducible locally checked preparation ZIP and manual artifact/draft-release workflow."
+  }
+}
