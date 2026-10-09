@@ -1,7 +1,7 @@
-// Encoders for the scrcpy v5.0 control protocol.
-// Source of truth: app/src/control_msg.c at tag v5.0.
+// Encoders for the scrcpy v5.0.1 control protocol.
+// Source of truth: app/src/control_msg.c at tag v5.0.1.
 
-export const SCRCPY_VERSION = '5.0';
+export const SCRCPY_VERSION = '5.0.1';
 
 export const Type = Object.freeze({
   INJECT_KEYCODE: 0,

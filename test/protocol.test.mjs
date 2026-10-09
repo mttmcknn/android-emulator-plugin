@@ -4,7 +4,7 @@ import * as control from '../runtime/core/lib/control.mjs';
 import { VideoStreamParser } from '../runtime/core/lib/mirror.mjs';
 import { encodeFrame, FrameParser, acceptKey } from '../runtime/core/lib/websocket.mjs';
 
-test('touch event matches the scrcpy v5.0 32-byte layout', () => {
+test('touch event matches the scrcpy v5.0.1 32-byte layout', () => {
   const buf = control.touch({ action: control.MotionAction.DOWN, x: 100, y: 200, width: 1080, height: 2400 });
   assert.equal(buf.length, 32);
   assert.equal(buf[0], control.Type.INJECT_TOUCH_EVENT);
@@ -16,7 +16,7 @@ test('touch event matches the scrcpy v5.0 32-byte layout', () => {
   assert.equal(up.readUInt16BE(22), 0);
 });
 
-test('scroll, key, text, and clipboard messages use the v5.0 sizes', () => {
+test('scroll, key, text, and clipboard messages use the v5.0.1 sizes', () => {
   const scroll = control.scroll({ x: 5, y: 6, width: 10, height: 20, vscroll: 16, hscroll: -32 });
   assert.equal(scroll.length, 21);
   assert.equal(scroll.readInt16BE(13), -0x8000);

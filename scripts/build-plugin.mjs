@@ -10,6 +10,13 @@ const screenshots = path.join(root, 'assets', 'screenshots');
 const bundledScreenshots = path.join(plugin, 'assets', 'screenshots');
 const manifest = path.join(plugin, '.codex-plugin', 'plugin.json');
 const version = JSON.parse(fs.readFileSync(path.join(source, 'core', 'package.json'), 'utf8')).version;
+const check = process.argv.includes('--check');
+// Both the installable plugin and its retained helper need their legal files.
+// The repository root is authoritative for these generated copies.
+const legalFiles = ['LICENSE', 'NOTICE'];
+if (!check) {
+  for (const file of legalFiles) fs.copyFileSync(path.join(root, file), path.join(source, file));
+}
 
 function files(dir, prefix = '') {
   return fs.readdirSync(path.join(dir, prefix), { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name)).flatMap(entry => {
@@ -21,14 +28,18 @@ function files(dir, prefix = '') {
 }
 const sourceFiles = files(source);
 const screenshotFiles = files(screenshots);
-if (process.argv.includes('--check')) {
+if (check) {
   const builtFiles = fs.existsSync(target) ? files(target) : [];
   const builtScreenshots = fs.existsSync(bundledScreenshots) ? files(bundledScreenshots) : [];
   const matches = JSON.stringify(sourceFiles) === JSON.stringify(builtFiles)
     && sourceFiles.every(file => fs.readFileSync(path.join(source, file)).equals(fs.readFileSync(path.join(target, file))))
     && JSON.stringify(screenshotFiles) === JSON.stringify(builtScreenshots)
     && screenshotFiles.every(file => fs.readFileSync(path.join(screenshots, file)).equals(fs.readFileSync(path.join(bundledScreenshots, file))))
-    && JSON.parse(fs.readFileSync(manifest, 'utf8')).version === version;
+    && JSON.parse(fs.readFileSync(manifest, 'utf8')).version === version
+    && legalFiles.every(file => [source, plugin].every(dir => {
+      const copy = path.join(dir, file);
+      return fs.existsSync(copy) && fs.readFileSync(copy).equals(fs.readFileSync(path.join(root, file)));
+    }));
   if (!matches) throw new Error('The Codex plugin bundle is stale. Run npm run build, then rerun tests.');
   console.log(`Codex bundle matches shared runtime ${version}.`);
 } else {
@@ -38,6 +49,7 @@ if (process.argv.includes('--check')) {
   fs.cpSync(source, target, { recursive: true });
   fs.rmSync(bundledScreenshots, { recursive: true, force: true });
   fs.cpSync(screenshots, bundledScreenshots, { recursive: true });
+  for (const file of legalFiles) fs.copyFileSync(path.join(root, file), path.join(plugin, file));
   const metadata = JSON.parse(fs.readFileSync(manifest, 'utf8'));
   fs.writeFileSync(manifest, `${JSON.stringify({ ...metadata, version }, null, 2)}\n`);
   console.log(`Built Codex plugin ${version} from ${sourceFiles.length} runtime files.`);

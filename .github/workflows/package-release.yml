@@ -1,0 +1,145 @@
+name: Package release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact plugin manifest version, such as 2026.10.9
+        required: true
+        type: string
+      tag:
+        description: Existing remote tag v<version> at the selected workflow commit
+        required: true
+        type: string
+      create_draft:
+        description: Also create an unpublished GitHub release draft
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: package-release-${{ github.repository }}-${{ inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  VERSION: ${{ inputs.version }}
+  TAG: ${{ inputs.tag }}
+
+jobs:
+  package:
+    name: Build submission artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - name: Check out selected workflow commit and existing tags
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Validate source, test, and package
+        run: npm run package:submission -- --version "$VERSION" --tag "$TAG"
+      - name: Record packaged commit and check deliverables
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "dist/android-emulator-plugin-${VERSION}.zip"
+          test -f "dist/android-emulator-plugin-${VERSION}.zip.sha256"
+          test -f dist/submission-report.json
+          test -f dist/RELEASE-NOTES.md
+          printf 'commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Upload ZIP, checksum, report, and matching changelog notes
+        id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-emulator-plugin-${{ inputs.version }}
+          path: |
+            dist/android-emulator-plugin-${{ inputs.version }}.zip
+            dist/android-emulator-plugin-${{ inputs.version }}.zip.sha256
+            dist/submission-report.json
+            dist/RELEASE-NOTES.md
+          if-no-files-found: error
+          retention-days: 14
+
+  create-draft:
+    name: Create unpublished release draft
+    needs: package
+    if: ${{ inputs.create_draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only this explicitly selected job can write repository contents/releases.
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_COMMIT: ${{ needs.package.outputs.commit }}
+    steps:
+      - name: Check out packaged commit and recheck existing tags
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.package.outputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Download this run's immutable artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.package.outputs.artifact_id }}
+          path: dist
+          digest-mismatch: error
+      - name: Verify tag and downloaded package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$TAG" = "v${VERSION}"
+          git check-ref-format "refs/tags/$TAG"
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          test "$(git rev-parse --verify "refs/tags/$TAG^{commit}")" = "$SOURCE_COMMIT"
+          jq --exit-status --arg version "$VERSION" --arg tag "$TAG" --arg commit "$SOURCE_COMMIT" \
+            '.package_status == "local_checks_passed" and .source.clean == true and .source.version == $version and .source.tag == $tag and .source.commit == $commit and .archive.file_name == ("android-emulator-plugin-" + $version + ".zip") and .changelog.version == $version and .changelog.file_name == "CHANGELOG.md"' \
+            dist/submission-report.json
+          test "$(sha256sum "dist/android-emulator-plugin-${VERSION}.zip" | cut -d ' ' -f 1)" = "$(jq --raw-output '.archive.sha256' dist/submission-report.json)"
+          jq --join-output --raw-output '.changelog.section' dist/submission-report.json > "$RUNNER_TEMP/reported-release-notes.md"
+          cmp dist/RELEASE-NOTES.md "$RUNNER_TEMP/reported-release-notes.md"
+          test "$(sha256sum dist/RELEASE-NOTES.md | cut -d ' ' -f 1)" = "$(jq --raw-output '.changelog.section_sha256' dist/submission-report.json)"
+          test "$(git show HEAD:CHANGELOG.md | sha256sum | cut -d ' ' -f 1)" = "$(jq --raw-output '.changelog.sha256' dist/submission-report.json)"
+          cd dist
+          sha256sum --check "android-emulator-plugin-${VERSION}.zip.sha256"
+      - name: Reject an existing draft or published release
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Listing includes drafts for this write-scoped token. API errors abort.
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            > "$RUNNER_TEMP/existing-releases.json"
+          existing_count="$(jq --exit-status --arg tag "$TAG" \
+            '[.[][] | select(.tag_name == $tag)] | length' \
+            "$RUNNER_TEMP/existing-releases.json")"
+          if test "$existing_count" != 0; then
+            printf 'A release already exists for %s; no release or assets will be overwritten.\n' "$TAG" >&2
+            exit 1
+          fi
+      - name: Create draft with the verified deliverables
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="dist/android-emulator-plugin-${VERSION}.zip"
+          gh release create "$TAG" "$archive" "$archive.sha256" dist/submission-report.json \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --draft --latest=false \
+            --title "Android Emulators $VERSION" --notes-file dist/RELEASE-NOTES.md
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,tagName,url \
+            > "$RUNNER_TEMP/created-release.json"
+          jq --exit-status --arg tag "$TAG" '.isDraft == true and .tagName == $tag' \
+            "$RUNNER_TEMP/created-release.json"
+          jq --raw-output '.url' "$RUNNER_TEMP/created-release.json"

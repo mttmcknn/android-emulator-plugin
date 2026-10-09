@@ -30,12 +30,17 @@ const GLYPHS = {
 };
 
 export function iconFor(glyph) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" stroke-linejoin="round">${GLYPHS[glyph]}</svg>`;
+  const attribution = glyph === 'android'
+    ? '<desc>Android is a trademark of Google LLC. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License: https://creativecommons.org/licenses/by/3.0/. Modified by redrawing and scaling.</desc>'
+    : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.33" stroke-linecap="round" stroke-linejoin="round">${attribution}${GLYPHS[glyph]}</svg>`;
   return [{ src: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`, mimeType: 'image/svg+xml', sizes: ['20x20'] }];
 }
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
 const action = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
+// Navigation/UI inspection can prepare missing tools from public upstream URLs.
+const navigationAction = { ...action, openWorldHint: true };
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 const appOnly = { ui: { visibility: ['app'] } };
 const fileInput = obj({ name: { type: 'string' }, resourceUri: { type: 'string' } }, ['name', 'resourceUri']);
@@ -64,7 +69,7 @@ export const TOOLS = [
       direction: { type: 'string', enum: ['up', 'down', 'left', 'right'], description: 'Required for scroll. Minimap content direction; down reveals content below.' },
       expect: { type: 'array', items: { type: 'string' }, maxItems: 8, description: 'go must verify all selectors at the destination. Use for specific item or state checks.' },
     }, ['action']),
-    annotations: { title: 'Navigate app', ...action },
+    annotations: { title: 'Navigate app', ...navigationAction },
     icons: iconFor('tree'),
   },
   {
@@ -115,7 +120,7 @@ export const TOOLS = [
     title: 'APK',
     description: "Show an APK file and install it on this chat's Android emulator.",
     inputSchema: obj({ file: fileInput, action: { type: 'string', enum: ['info', 'install'] } }, ['file']),
-    annotations: { title: 'Open APK', ...action },
+    annotations: { title: 'Open APK', ...navigationAction },
     icons: iconFor('apk'),
     _meta: { ui: { visibility: ['app'], resourceUri: APK_URI } },
   },
@@ -164,7 +169,7 @@ export const TOOLS = [
     name: 'emulator_screenshot',
     description: "Capture this chat's Android emulator screen as an image. Set save to keep a reusable capture for clipboard or chat sharing; ordinary screenshots are not saved.",
     inputSchema: obj({ save: { type: 'boolean', description: 'Save a reusable capture and return its ID. Default false.' } }),
-    annotations: { title: 'Take screenshot', ...readOnly },
+    annotations: { title: 'Take screenshot', ...action },
     icons: iconFor('camera'),
   },
   {
@@ -179,7 +184,7 @@ export const TOOLS = [
     description:
       'List meaningful on-screen UI elements from the accessibility hierarchy with text, content description, resource id, center coordinates, and state. Prefer this over screenshots for finding tap targets.',
     inputSchema: obj({ query: { type: 'string', description: 'Optional case-insensitive filter on text, description, or resource id.' } }),
-    annotations: { title: 'Read screen elements', ...readOnly },
+    annotations: { title: 'Read screen elements', ...navigationAction },
     icons: iconFor('tree'),
   },
   {
@@ -193,7 +198,7 @@ export const TOOLS = [
       state: { type: 'string', enum: ['appears', 'disappears'], description: 'Default appears.' },
       timeoutMs: { type: 'integer', minimum: 1, maximum: 30_000, description: 'Default 10000; maximum 30000.' },
     }),
-    annotations: { title: 'Wait for screen', ...readOnly },
+    annotations: { title: 'Wait for screen', ...navigationAction },
     icons: iconFor('tree'),
   },
   {
@@ -208,7 +213,7 @@ export const TOOLS = [
       resourceId: { type: 'string', description: 'View id, with or without the package prefix.' },
       durationMs: { type: 'integer', minimum: 1, maximum: 10_000, description: 'Long-press duration; maximum 10000.' },
     }),
-    annotations: { title: 'Tap screen', ...action },
+    annotations: { title: 'Tap screen', ...navigationAction },
     icons: iconFor('tap'),
   },
   {
@@ -222,7 +227,7 @@ export const TOOLS = [
       y2: { type: 'number' },
       durationMs: { type: 'number', description: 'Default 300.' },
     }),
-    annotations: { title: 'Swipe screen', ...action },
+    annotations: { title: 'Swipe screen', ...navigationAction },
     icons: iconFor('swipe'),
   },
   {
@@ -238,7 +243,7 @@ export const TOOLS = [
       tap: { type: 'boolean', description: 'Default false. Tap the element only after it is found.' },
       durationMs: { type: 'integer', minimum: 1, maximum: 10_000, description: 'Swipe duration; default 300.' },
     }),
-    annotations: { title: 'Scroll to element', ...action },
+    annotations: { title: 'Scroll to element', ...navigationAction },
     icons: iconFor('swipe'),
   },
   {
@@ -246,7 +251,7 @@ export const TOOLS = [
     description:
       'Read the screenshot, meaningful UI elements, and foreground app concurrently. This is not an atomic snapshot; partial read errors are returned explicitly. If navigation.currentPlace.needsLabel is true, use this observation to give the screen a short descriptive name with emulator_navigate (whereami + label) before navigating away.',
     inputSchema: obj({}),
-    annotations: { title: 'Inspect screen', ...readOnly },
+    annotations: { title: 'Inspect screen', ...navigationAction },
     icons: iconFor('camera'),
   },
   {
@@ -267,7 +272,7 @@ export const TOOLS = [
       replace: { type: 'boolean', description: 'Default false. Select all and replace only in a known editable field.' },
       submit: { type: 'boolean', description: 'Press Enter afterwards.' },
     }, ['text']),
-    annotations: { title: 'Type text', ...action },
+    annotations: { title: 'Type text', ...navigationAction },
     icons: iconFor('keyboard'),
   },
   {
@@ -279,14 +284,14 @@ export const TOOLS = [
       packageName: { type: 'string', description: 'Qualified Android package name, for example com.example.app.' },
       permission: { type: 'string', description: 'Required only for grant_permission or revoke_permission, for example android.permission.CAMERA.' },
     }, ['action', 'packageName']),
-    annotations: { title: 'Manage app', ...action },
+    annotations: { title: 'Manage app', ...navigationAction },
     icons: iconFor('open'),
   },
   {
     name: 'emulator_key',
     description: 'Press a key: BACK, HOME, APP_SWITCH, ENTER, DEL, TAB, ESCAPE, DPAD_UP/DOWN/LEFT/RIGHT, POWER, VOLUME_UP, VOLUME_DOWN, MENU, or a numeric Android keycode.',
     inputSchema: obj({ key: { type: ['string', 'integer'] } }, ['key']),
-    annotations: { title: 'Press device key', ...action },
+    annotations: { title: 'Press device key', ...navigationAction },
     icons: iconFor('key'),
   },
   {
@@ -306,7 +311,7 @@ export const TOOLS = [
     name: 'emulator_open',
     description: 'Open a deep link or URL (optionally restricted to packageName), launch an app by packageName, or start an explicit component such as "com.example/.MainActivity".',
     inputSchema: obj({ url: { type: 'string' }, packageName: { type: 'string' }, component: { type: 'string' } }),
-    annotations: { title: 'Open app or link', ...action },
+    annotations: { title: 'Open app or link', ...navigationAction },
     icons: iconFor('open'),
   },
   {
@@ -402,7 +407,7 @@ export const TOOLS = [
       },
       ['thread', 'key', 'session'],
     ),
-    annotations: { title: 'Stream device display', ...action },
+    annotations: { title: 'Stream device display', ...navigationAction, destructiveHint: true },
     icons: iconFor('phone'),
     _meta: appOnly,
   },

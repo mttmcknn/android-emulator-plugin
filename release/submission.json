@@ -1,0 +1,60 @@
+{
+  "interface": {
+    "shortDescription": "Android devices for every chat",
+    "longDescription": "Run and test Android apps from Codex desktop on macOS or Linux. Pin multiple emulators and connected Android devices to a chat, switch the live panel, and compare screens. Devices belong exclusively to one chat; moving a connected device requires the user's panel confirmation. Install APKs, inspect screens and Logcat, send taps and text, and capture screenshots or recordings. Device conditions and snapshots require emulators. Requires Node.js 20+ and separately installed Android SDK/platform tools; emulators need an installed system image, and connected phones need USB debugging authorization. Screen memory downloads Minimap and Google's Android CLI separately when missing; Google's launcher can download its own runtime. Clipboard export requires macOS; video sample frames use external FFmpeg and ffprobe.",
+    "brandColor": "#35C878"
+  },
+  "review": {
+    "test_cases": {
+      "positive": [
+        {
+          "description": "Start two instances of an installed disposable AVD in a fresh Codex chat. Setup: Codex desktop, Node.js 20+, installed SDK/API 36 image, sufficient resources for two emulators, and a disposable AVD. Use read-only copies so state is not saved.",
+          "prompt": "Start two read-only copies of my test Android emulator so I can compare their screens.",
+          "tools_triggered": "check_device_status, start_emulator, list_devices",
+          "expected_behavior": "List actual available AVDs, select the review AVD, start with readOnly:true, then start the additional copy with readOnly:true and newInstance:true. Successful startup opens the panel automatically in supported hosts; do not call show_device_panel redundantly. Return distinct device IDs/serials and actual startup results. Both pins belong to this chat; other chat devices remain untouched."
+        },
+        {
+          "description": "Pin a reviewer-owned USB device currently pinned in a second disposable review chat. Setup: USB debugging is authorized, sample data only, and the reviewer can confirm a move in the panel. Record both chats' existing pins first.",
+          "prompt": "Add my connected test phone to this chat; if it belongs to my other review chat, ask me to confirm moving it.",
+          "tools_triggered": "list_devices, pin_device, check_device_status",
+          "expected_behavior": "Use the actual serial from list_devices and call pin_device. A device owned by the other chat returns confirmationRequired; wait for the user's panel confirmation rather than confirming as an agent. After that confirmation, check actual ownership in this chat. Never expose the other chat's captures, disturb its other pins, or shut down the phone."
+        },
+        {
+          "description": "Inspect and navigate Settings on one specified emulator with several devices pinned. Setup: the first case has passed; reviewer supplies a returned device ID; navigation dependencies are installed under applicable terms handled by the reviewer.",
+          "prompt": "On the test emulator with the device ID I provided, open Settings, find Display using the visible label, and verify that its page appeared.",
+          "tools_triggered": "list_devices, open_app_or_link, read_screen_elements, tap_screen, wait_for_screen",
+          "expected_behavior": "Confirm the target is pinned to this chat, then pass its explicit deviceId on every device action. Open com.android.settings, inspect real labels/resource IDs and positions, tap the actual Display node, and wait for an observed destination with timeoutMs no greater than 30000. Return actual evidence; do not guess an ambiguous target or missing control. Other pinned devices remain untouched. Report blocked dependency preparation explicitly."
+        },
+        {
+          "description": "Save and return a screenshot of the explicitly selected review device with multiple pins. Setup: the device is running, its returned device ID is known, and it shows sample data only.",
+          "prompt": "Save a screenshot of the test device with the device ID I provided and add its image to this chat.",
+          "tools_triggered": "take_screenshot, view_or_copy_captures",
+          "expected_behavior": "Call take_screenshot with save:true and the selected deviceId, then view_or_copy_captures with action:context, that deviceId and the returned captureId. Return an actual image and capture identity for that device. Do not fabricate an image or return a capture from another device or chat."
+        },
+        {
+          "description": "Diagnose the chat's review devices without resetting them. Setup: sample-data emulator and USB phone are pinned; record their IDs/serials. The phone has no emulator process or emulator-only device-condition controls.",
+          "prompt": "Show diagnostics for these devices without restarting them, and explain which emulator conditions my connected phone cannot use.",
+          "tools_triggered": "diagnose_device_issues, check_device_status",
+          "expected_behavior": "Return actual plugin/helper versions, SDK/device/stream diagnostics and stable diagnostic codes. Use check_device_status with a deviceId when detailed status is needed; diagnose_device_issues takes no deviceId. Physical-device emulator-process status may be unavailable. Explain emulator-only conditions and snapshots without trying to mutate them. Do not restart helpers/devices, delete AVDs or expose access keys/raw device content."
+        }
+      ],
+      "negative": [
+        {
+          "description": "iOS simulator control is outside this Android plugin. Explain that limit; do not call create_emulator/start_emulator/open_app_or_link or claim an iOS simulator was started.",
+          "prompt": "Start an iPhone simulator and run my iOS app in it."
+        },
+        {
+          "description": "The plugin has no cloud-device provisioning service. Explain local emulator or authorized connected-device requirements; do not invoke local tools as if they provisioned a remote Android farm.",
+          "prompt": "Rent five remote Android devices in the cloud and give me public access links."
+        },
+        {
+          "description": "An ambiguous target among multiple pinned devices must not be guessed. Ask for the device ID or explicit selection before any mutating action; do not assume the visible tab is the target.",
+          "prompt": "I have several devices pinned. Install this APK on whichever one you think I mean."
+        }
+      ]
+    }
+  },
+  "publication": {
+    "release_notes": "Combines multiple pinned emulators and authorized connected Android devices, comparison panels, explicit device targeting, exclusive ownership with user-confirmed moves, friendly Codex tool names and automatic startup panels. Updates the bundled scrcpy Android server to 5.0.1; retains first-party/component notices, Android robot attribution and exact Minimap application/Rust notices. Corrects tool hints, preserves local MCP/skills/screen memory and adds deterministic locally checked ZIPs with committed provenance and matching CHANGELOG release notes. The manual Actions workflow defaults to artifacts and can create an unpublished draft only when explicitly selected. Public Registry review remains incomplete."
+  }
+}

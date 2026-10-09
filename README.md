@@ -1,4 +1,4 @@
-# Android Emulator Plugin
+# Android™ Emulator Plugin
 
 Run, control, and test Android apps from Codex. Pin emulators and connected Android devices to a chat, then watch the agent work or take control in the live panel.
 
@@ -39,6 +39,8 @@ Use an existing Android Virtual Device or ask the agent to create one. Set `ANDR
 
 For a physical device, enable USB debugging, connect it, and accept Android's debugging prompt. Select it from the panel's device dropdown. Unpinning releases the connection without shutting down the phone. Rotation, simulated location/battery, fold posture, and snapshots require an emulator.
 
+Screen memory may download Minimap and [Google's Android CLI](https://developer.android.com/tools/agents/android-cli/download) directly from their upstream servers. The CLI launcher can download its own runtime and is invoked even during version checks. Review the applicable [Android SDK terms](https://developer.android.com/studio/terms) before first use; users handle their own agreement. To use installations you manage yourself, set `ANDROID_EMULATOR_MINIMAP` and `ANDROID_EMULATOR_ANDROID_CLI` to those executables. These tools are downloaded separately and are not included in the plugin archive.
+
 ## Install
 
 ```sh
@@ -69,14 +71,18 @@ codex plugin marketplace add "$PWD"
 codex plugin add android-emulator-plugin@mttmcknn
 ```
 
-The shared service and UI live in `runtime/core`, MCP support in `runtime/mcp`, and the Codex integration in `runtime/hosts/codex`. Edit source under `runtime/`, then rebuild the generated plugin bundle. Capture, device control, streaming, recording, and navigation implementations can be selected per chat.
+The shared service and UI live in `runtime/core`, MCP support in `runtime/mcp`, and the Codex integration in `runtime/hosts/codex`. Edit source under `runtime/`, then rebuild the generated plugin bundle. Root `LICENSE` and `NOTICE` are authoritative; the build copies them into the runtime and installable plugin so retained helpers keep their notices. Capture, device control, streaming, recording, and navigation implementations can be selected per chat.
+
+For a repeatable release ZIP from a clean committed checkout, run `npm run package:submission`. It builds, runs local tests, checks the actual archive and writes the ZIP, checksum, release notes and readiness report to `dist/`. Maintain a matching version entry in [CHANGELOG.md](CHANGELOG.md); packaging rejects missing or empty entries and generates the release notes from that section. [Submission preparation](SUBMISSION.md) explains the author copy and remaining registry requirements. The [release workflow](GITHUB-RELEASES.md) documents local publication and an optional manual GitHub workflow that defaults to artifacts and can attach them to an explicitly requested draft release; pushes do not trigger it.
 
 ## License and attribution
 
 Apache-2.0. See [LICENSE](LICENSE).
 
-The bundled scrcpy server is licensed under Apache-2.0. Its [source information](runtime/core/vendor/SCRCPY-SOURCE.md) and [license](runtime/core/vendor/SCRCPY-LICENSE) are included.
+The bundled, unmodified **scrcpy Android server 5.0.1** is licensed under Apache-2.0. Its [source information and binary component inventory](runtime/core/vendor/SCRCPY-SOURCE.md), [license](runtime/core/vendor/SCRCPY-LICENSE), and component notices are included. The plugin uses its own client and browser decoder; desktop scrcpy, FFmpeg, SDL and ADB are not bundled.
 
 The Logcat icon uses [Lucide's Logs icon](https://lucide.dev/icons/logs) under the [ISC license](runtime/core/vendor/LUCIDE-LICENSE).
 
-The Android robot is used under the Creative Commons 3.0 Attribution License. Android is a trademark of Google LLC. This plugin is not made or endorsed by Google or OpenAI.
+Android is a trademark of Google LLC. The Android robot is reproduced or modified from work created and shared by Google and used according to terms described in the [Creative Commons 3.0 Attribution License](https://creativecommons.org/licenses/by/3.0/). Modifications include redrawing, scaling, color and combining with a phone. This plugin is not made or endorsed by Google or OpenAI.
+
+See [NOTICE](NOTICE) for distributed attribution and [LICENSE-AUDIT.md](LICENSE-AUDIT.md) for the release inventory, external tools, managed downloads, authoritative sources and unresolved publication risks. The audit is evidence for this artifact, not a legal guarantee.
