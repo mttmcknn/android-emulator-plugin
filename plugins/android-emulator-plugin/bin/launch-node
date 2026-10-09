@@ -15,5 +15,5 @@ if node_path=$(command -v node 2>/dev/null); then
   exec "$node_path" "$@"
 fi
 
-printf '%s\n' 'Android Emulators could not find Node.js 20 or newer. Install Node.js or update Codex.' >&2
+printf '%s\n' 'Android Emulators could not find Node.js 20 or newer. Install Node.js or update your agent app.' >&2
 exit 127

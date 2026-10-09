@@ -31,7 +31,7 @@ The **Android Emulators** sidebar manages running devices and saved virtual devi
 
 ## Requirements
 
-- Codex desktop with plugin support.
+- Codex desktop with plugin support, or Cursor.
 - Android SDK Platform Tools on macOS or Linux. Virtual devices also need Android SDK Emulator and a system image. Android Studio can install these through SDK Manager.
 - Node.js 20 or newer. The plugin uses Codex's bundled runtime when available.
 
@@ -52,6 +52,14 @@ Restart Codex, then ask:
 
 You can also ask the agent to install an APK, test a screen, inspect Logcat, or diagnose a connection problem. Drag an APK onto the device panel to install it directly.
 
+### Cursor
+
+Copy `plugins/android-emulator-plugin` into `~/.cursor/plugins/local/` (Cursor skips symlinks that point outside that folder), or import this repository as a team marketplace. Run **Developer: Reload Window**, then ask:
+
+> Start an Android emulator and show it.
+
+Cursor does not tell MCP servers which chat made a call, so each Cursor window gets the devices for its workspace, shared by every chat in that window. The device panel renders inline where Cursor supports MCP Apps; every panel result also includes a local browser URL for the same live panel. The `.apk` file viewer, @-mentions, and **Add to chat** are Codex-only.
+
 ## Captures and screen memory
 
 The camera and recording controls open a capture tray with **Copy**, **Add to chat**, and **Copy + add to chat** actions. The paperclip adds a screenshot to chat in one step.
@@ -69,7 +77,7 @@ codex plugin marketplace add "$PWD"
 codex plugin add android-emulator-plugin@mttmcknn
 ```
 
-The shared service and UI live in `runtime/core`, MCP support in `runtime/mcp`, and the Codex integration in `runtime/hosts/codex`. Edit source under `runtime/`, then rebuild the generated plugin bundle. Capture, device control, streaming, recording, and navigation implementations can be selected per chat.
+The shared service and UI live in `runtime/core`, MCP support in `runtime/mcp`, and the Codex and Cursor integrations in `runtime/hosts/codex` and `runtime/hosts/cursor`. Edit source under `runtime/`, then rebuild the generated plugin bundle. Capture, device control, streaming, recording, and navigation implementations can be selected per chat.
 
 ## License and attribution
 
