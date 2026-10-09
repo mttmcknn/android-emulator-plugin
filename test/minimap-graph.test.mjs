@@ -194,10 +194,28 @@ test('old CLI, malformed output, oversized output, launch failures, and aborts e
   assert.equal((await aborted.graph({ cwd: root }, { signal: controller.signal })).graphStatus.status, 'error'); assert.equal(calls, 0);
 });
 
-test('a real local graph subprocess needs neither SDK resolution nor automatic dependency setup', async t => {
+test('graph capability requires bounded command-specific usage, including on a legacy CLI', async t => {
   const root = directory(t); savedGraph(root);
-  const script = path.join(root, 'graph-cli.mjs'), log = path.join(root, 'calls.jsonl'), state = path.join(root, 'state');
-  fs.writeFileSync(script, `#!${process.execPath}\nimport fs from 'node:fs'; const args=process.argv.slice(2);fs.appendFileSync(${JSON.stringify(log)},JSON.stringify({args,serial:process.env.ANDROID_SERIAL})+'\\n');if(args.join(' ')==='graph --help')process.stdout.write('Usage: minimap graph [OPTIONS]');else if(args.join(' ')==='graph')process.stdout.write(${JSON.stringify(JSON.stringify(projection()))});else process.exit(9);`, { mode: 0o700 });
+  for (const stdout of [
+    'Usage: minimap [OPTIONS] <COMMAND>\nCommands:\n  graph  Mentioned in generic help only',
+    'Usage: minimap graphish [OPTIONS]',
+    'Usage: minimap go graph [OPTIONS]',
+    'Usage: minimap graph [OPTIONS]\n' + 'x'.repeat(64 * 1024),
+    undefined,
+  ]) {
+    let calls = 0;
+    const nav = createMinimapBackend({ environment: () => ({}), runCommand: async (_file, args) => {
+      calls++; assert.deepEqual(args, ['graph', '--help']); return { code: 0, stdout };
+    } }).create();
+    assert.equal((await nav.graph({ cwd: root })).graphStatus.status, 'unsupported');
+    assert.equal(calls, 1, 'invalid help must never trigger graph export');
+  }
+});
+
+test('a renamed real graph subprocess needs neither SDK resolution nor automatic dependency setup', async t => {
+  const root = directory(t); savedGraph(root);
+  const script = path.join(root, 'minimap-graph-demo'), log = path.join(root, 'calls.jsonl'), state = path.join(root, 'state');
+  fs.writeFileSync(script, `#!${process.execPath}\nimport fs from 'node:fs';import path from 'node:path';const args=process.argv.slice(2);fs.appendFileSync(${JSON.stringify(log)},JSON.stringify({args,serial:process.env.ANDROID_SERIAL})+'\\n');if(args.join(' ')==='graph --help')process.stdout.write('Usage: '+path.basename(process.argv[1])+' graph [OPTIONS]');else if(args.join(' ')==='graph')process.stdout.write(${JSON.stringify(JSON.stringify(projection()))});else process.exit(9);`, { mode: 0o700 });
   const nav = createMinimapBackend({ stateDir: state, executable: script, environment: () => ({ PATH: '', ANDROID_HOME: '/missing-test-sdk', ANDROID_SERIAL: 'must-ignore' }) }).create();
   assert.equal((await nav.graph({ cwd: root })).graphStatus.status, 'ok');
   assert.deepEqual(fs.readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line)), [{ args: ['graph', '--help'] }, { args: ['graph'] }]);

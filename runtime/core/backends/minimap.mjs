@@ -103,6 +103,8 @@ export function screenGraphProjection(value) {
 
 const graphResult = (status, message, graph = null) => ({ graph, graphStatus: { status, message } });
 const graphError = () => graphResult('error', 'The saved graph could not be exported safely. Ask the agent to inspect Minimap diagnostics.');
+const graphCommandHelp = value => typeof value === 'string' && Buffer.byteLength(value, 'utf8') <= 64 * 1024
+  && /^Usage:[ \t]+\S{1,4096}[ \t]+graph(?:[ \t]+[^\r\n]{0,4096})?\r?$/m.test(value);
 
 // Minimap isolates its own Android subprocess groups. Stop its parent first,
 // then kill descendant groups too so cancellation cannot leave input running.
@@ -289,11 +291,12 @@ export function createMinimapBackend(options = {}) {
             const env = { ...environment() };
             delete env.ANDROID_SERIAL;
             const options = { cwd: map.root, env, signal, timeoutMs: 5000 };
-            // Both released and local binaries identify as 0.2.1. Discover the
-            // command itself without executing a device or map operation.
+            // Compatible 0.2.x releases may lack this command, and Clap uses
+            // the executable basename in Usage. Discover command-specific
+            // help without executing a device or map operation.
             executing = true;
             const help = await runCommand(file, ['graph', '--help'], options);
-            if (help.code !== 0 || !/\bminimap graph\b/.test(help.stdout)) return graphResult('unsupported', 'This Minimap CLI does not support graph export. Use a Minimap build with the graph command; saved navigation is unchanged.');
+            if (help.code !== 0 || !graphCommandHelp(help.stdout)) return graphResult('unsupported', 'This Minimap CLI does not support graph export. Use a Minimap build with the graph command; saved navigation is unchanged.');
             const response = await runCommand(file, ['graph'], options);
             if (response.code !== 0 || Buffer.byteLength(response.stdout, 'utf8') > MAX_OUTPUT) return graphError();
             const graph = screenGraphProjection(JSON.parse(response.stdout));
