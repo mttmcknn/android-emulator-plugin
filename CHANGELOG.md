@@ -8,6 +8,23 @@ dates. Versions 2026.10.7 and 2026.10.8 describe development source history; nei
 had a published GitHub release. Available history starts at this repository's
 initial commit; no history from a retired or separate repository is inferred.
 
+## [Unreleased]
+
+### Added
+
+- Inspect saved Minimap screens and directed routes in each device's Screen map
+  drawer, with Graph/Navigate views, keyboard selection and a complete route list
+  and matrix. Selecting a screen inspects metadata; the separate Go button replays
+  a route on that device. Comparison frames keep independent selections.
+- Export sanitized saved graph metadata through the existing navigation tool's
+  `graph` action, without observing a device, initializing a map or installing
+  dependencies. The graph view requires a Minimap build with `minimap graph`;
+  the managed 0.2.1 CLI remains compatible with existing navigation and reports
+  graph export as unsupported. Existing maps need no migration.
+- Reuse the dependency-free Minimap graph renderer and live host appearance in
+  self-contained Codex resources and locally served panels. No screen image is
+  inferred from saved metadata.
+
 ## [2026.10.9]
 
 First GitHub release, combining the existing plugin, the pinned-device update in
