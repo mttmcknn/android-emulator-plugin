@@ -1,0 +1,17 @@
+{
+  "name": "mttmcknn",
+  "owner": {
+    "name": "Matt McKenna",
+    "url": "https://github.com/mttmcknn"
+  },
+  "metadata": {
+    "description": "Android emulator tools for coding agents"
+  },
+  "plugins": [
+    {
+      "name": "android-emulator-plugin",
+      "source": "plugins/android-emulator-plugin",
+      "description": "Open, control, and test Android emulators and connected devices from Cursor, with a live device panel."
+    }
+  ]
+}

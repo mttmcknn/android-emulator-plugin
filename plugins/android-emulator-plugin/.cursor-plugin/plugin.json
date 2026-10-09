@@ -1,0 +1,24 @@
+{
+  "name": "android-emulator-plugin",
+  "displayName": "Android Emulators",
+  "version": "2026.10.9",
+  "description": "Open, control, and test Android emulators and connected devices from Cursor, with a live device panel.",
+  "author": {
+    "name": "Matt McKenna",
+    "url": "https://github.com/mttmcknn"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "android",
+    "emulator",
+    "avd",
+    "adb",
+    "mobile",
+    "testing"
+  ],
+  "skills": "./cursor-skills/",
+  "mcpServers": "./cursor-mcp.json",
+  "logo": "./assets/logo.svg",
+  "homepage": "https://github.com/mttmcknn/android-emulator-plugin",
+  "repository": "https://github.com/mttmcknn/android-emulator-plugin"
+}

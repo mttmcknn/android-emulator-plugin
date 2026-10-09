@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "emulator": {
+      "command": "${CURSOR_PLUGIN_ROOT}/bin/launch-node",
+      "args": ["${CURSOR_PLUGIN_ROOT}/runtime/hosts/cursor/mcp.mjs"]
+    }
+  }
+}
