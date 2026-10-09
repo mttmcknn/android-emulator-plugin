@@ -1,4 +1,5 @@
 // Android Emulators UI. Runs in a host panel or as a page served by the local helper.
+import { mountScreenGraph, normalizeGraph } from './screen-graph.mjs';
 const $ = (id) => document.getElementById(id);
 let view = document.body.dataset.view ?? 'device';
 const deviceFrame = document.body.hasAttribute('data-device-frame') || new URLSearchParams(location.search).get('deviceFrame') === '1';
@@ -47,6 +48,13 @@ let minimapMap = null;
 let minimapBusyUI = false;
 let minimapCancelling = false;
 let minimapRefreshId = 0;
+let minimapGraph = null;
+let minimapGraphStatus = { status: 'uninitialized', message: 'No saved graph yet.' };
+let minimapGraphLoading = false;
+let minimapGraphViewer = null;
+let minimapGraphFingerprint = null;
+let minimapGraphSelection = null;
+let minimapView = 'graph';
 const pending = new Map();
 const pretty = (name) => name.replaceAll('_', ' ');
 
@@ -299,6 +307,7 @@ function onConnected() {
 
 function onDisconnected() {
   connected = false;
+  $('minimap-graph-go').disabled = true;
   activePointerId = null;
   rejectPending(new Error('The connection was interrupted. Check the result before trying the action again.'));
   resetDecoder();
@@ -517,6 +526,10 @@ function onJson(msg) {
   else if (msg.t === 'status') renderStatus(msg);
   else if (msg.t === 'agent') showAgentEvent(msg);
   else if (msg.t === 'navigation') {
+    if (msg.busy) {
+      minimapRefreshId++;
+      minimapGraphLoading = false;
+    }
     if (minimapMap) {
       minimapMap = { ...minimapMap, busy: Boolean(msg.busy) };
       renderMinimap();
@@ -931,6 +944,7 @@ function renderStatus(status) {
   }
   if (!deviceFrame) renderMenu();
   render();
+  renderMinimapGraphSelection();
 }
 
 function toast(text) {
@@ -962,6 +976,68 @@ function knownPlace(map, id) {
   return map?.places?.find((place) => place.id === id) ?? null;
 }
 
+function setMinimapView(next, focus = false) {
+  minimapView = next === 'navigation' ? 'navigation' : 'graph';
+  for (const name of ['graph', 'navigation']) {
+    const active = minimapView === name;
+    const tab = $(`minimap-${name}-tab`);
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+    $(`minimap-${name}-panel`).hidden = !active;
+    if (active && focus) tab.focus();
+  }
+}
+
+function renderMinimapGraphSelection() {
+  const place = minimapGraph?.places.find(({ id }) => id === minimapGraphSelection);
+  $('minimap-graph-selection').hidden = !place || minimapGraphLoading;
+  $('minimap-graph-selected').textContent = place ? `Selected for inspection: ${place.label}` : '';
+  // Inspection never sets currentPlace. Navigation remains a deliberate action.
+  $('minimap-graph-go').disabled = !connected || !place || minimapGraphLoading || minimapGraphStatus.status !== 'ok'
+    || !knownPlace(minimapMap, place.id) || minimapMap?.availability?.available === false
+    || Boolean(minimapMap?.error || minimapMap?.busy || minimapBusyUI)
+    || lastStatus?.emulator?.state !== 'ready';
+}
+
+function renderMinimapGraph() {
+  const shown = minimapGraphStatus.status === 'ok' && minimapGraph && !minimapGraphLoading;
+  $('minimap-graph').hidden = !shown;
+  $('minimap-graph-status').textContent = minimapGraphLoading ? 'Loading saved graph…' : minimapGraphStatus.message;
+  if (shown) {
+    const fingerprint = JSON.stringify(minimapGraph);
+    if (fingerprint !== minimapGraphFingerprint) {
+      minimapGraphViewer?.destroy();
+      minimapGraphViewer = mountScreenGraph($('minimap-graph'), minimapGraph, {
+        selectedID: minimapGraphSelection,
+        onSelect(id) { minimapGraphSelection = id; renderMinimapGraphSelection(); },
+      });
+      minimapGraphFingerprint = fingerprint;
+      minimapGraphSelection = minimapGraphViewer.getSelection();
+    }
+  }
+  renderMinimapGraphSelection();
+}
+
+function applyMinimapGraphResult(result) {
+  const content = result?.structuredContent;
+  const status = content?.graphStatus;
+  minimapGraph = null;
+  minimapGraphStatus = { status: 'error', message: 'The saved graph could not be loaded. Refresh to try again.' };
+  if (status && ['ok', 'uninitialized', 'unsupported', 'unavailable', 'error'].includes(status.status)) {
+    minimapGraphStatus = { status: status.status, message: typeof status.message === 'string' ? status.message : '' };
+    if (status.status === 'ok') {
+      try {
+        if (content.graph?.schema_version !== 'minimap.screen-graph.v1') throw new Error('Unsupported graph schema');
+        normalizeGraph(content.graph);
+        minimapGraph = content.graph;
+      } catch {
+        minimapGraphStatus = { status: 'error', message: 'The saved graph is invalid. Refresh after updating Minimap.' };
+      }
+    }
+  }
+  renderMinimapGraph();
+}
+
 function renderMinimap() {
   const map = minimapMap;
   const availability = map?.availability;
@@ -988,6 +1064,7 @@ function renderMinimap() {
   $('minimap-current-section').hidden = !hasCurrent;
   $('minimap-places-section').hidden = !places.length;
   $('minimap-routes-section').hidden = !edges.length;
+  renderMinimapGraph();
 
   if (!map) return;
   if (!available || learning?.state === 'unavailable') {
@@ -1035,7 +1112,16 @@ function renderMinimap() {
 
 function applyMinimapResult(result, fallback) {
   const map = result?.structuredContent?.map;
-  if (map) minimapMap = map;
+  if (map) {
+    if (minimapMap && (minimapMap.projectName !== map.projectName || minimapMap.packageName !== map.packageName)) {
+      minimapGraphViewer?.destroy();
+      minimapGraphViewer = null;
+      minimapGraphFingerprint = null;
+      minimapGraphSelection = null;
+      minimapGraph = null;
+    }
+    minimapMap = map;
+  }
   setMinimapStatus(minimapStatusText(result, fallback));
   renderMinimap();
 }
@@ -1043,12 +1129,21 @@ function applyMinimapResult(result, fallback) {
 async function refreshMinimap() {
   if (minimapDrawer.hidden) return;
   const refreshId = ++minimapRefreshId;
-  try {
-    const result = await call('emulator_navigate', { action: 'status' });
-    if (refreshId !== minimapRefreshId) return;
-    applyMinimapResult(result, 'Screen map refreshed.');
-  } catch (error) {
-    setMinimapStatus(error.message);
+  minimapGraphLoading = true;
+  renderMinimapGraph();
+  const [mapResult, graphResult] = await Promise.allSettled([
+    call('emulator_navigate', { action: 'status' }),
+    call('emulator_navigate', { action: 'graph' }),
+  ]);
+  if (refreshId !== minimapRefreshId) return;
+  minimapGraphLoading = false;
+  if (mapResult.status === 'fulfilled') applyMinimapResult(mapResult.value, 'Screen map refreshed.');
+  else setMinimapStatus(mapResult.reason.message);
+  if (graphResult.status === 'fulfilled') applyMinimapGraphResult(graphResult.value);
+  else {
+    minimapGraph = null;
+    minimapGraphStatus = { status: 'error', message: graphResult.reason.message };
+    renderMinimapGraph();
   }
 }
 
@@ -1068,6 +1163,7 @@ async function runMinimapAction(args, fallback) {
   } finally {
     minimapBusyUI = false;
     renderMinimap();
+    if (!minimapDrawer.hidden) refreshMinimap();
   }
 }
 
@@ -1086,6 +1182,7 @@ function openMinimap() {
 }
 
 function closeMinimap() {
+  minimapRefreshId++;
   minimapDrawer.hidden = true;
   $('minimap-toggle').setAttribute('aria-pressed', 'false');
 }
@@ -1527,9 +1624,22 @@ $('minimap-toggle').addEventListener('click', () => {
 });
 $('minimap-close').addEventListener('click', closeMinimap);
 $('minimap-refresh').addEventListener('click', refreshMinimap);
+for (const name of ['graph', 'navigation']) {
+  $(`minimap-${name}-tab`).addEventListener('click', () => setMinimapView(name));
+  $(`minimap-${name}-tab`).addEventListener('keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 'graph' : event.key === 'End' ? 'navigation' : minimapView === 'graph' ? 'navigation' : 'graph';
+    setMinimapView(next, true);
+  });
+}
+$('minimap-graph-go').addEventListener('click', () => {
+  if (!$('minimap-graph-go').disabled && minimapGraphSelection) navigateToPlace(minimapGraphSelection);
+});
 $('minimap-locate').addEventListener('click', () => runMinimapAction({ action: 'whereami' }, 'Current screen located.'));
 $('minimap-cancel').addEventListener('click', async () => {
   if (minimapCancelling) return;
+  minimapRefreshId++;
   minimapBusyUI = true;
   minimapCancelling = true;
   renderMinimap();
@@ -1542,6 +1652,7 @@ $('minimap-cancel').addEventListener('click', async () => {
     minimapBusyUI = false;
     minimapCancelling = false;
     renderMinimap();
+    if (!minimapDrawer.hidden) refreshMinimap();
   }
 });
 $('snapshot-form').addEventListener('submit', (event) => {

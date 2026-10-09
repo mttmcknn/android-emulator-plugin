@@ -10,6 +10,7 @@ import { parseAndroidLayout } from './android-cli.mjs';
 
 const exec = promisify(execFile);
 const MAX_OUTPUT = 8 * 1024 * 1024;
+const SCREEN_GRAPH_SCHEMA = 'minimap.screen-graph.v1';
 const bounded = (value, name, max = 512) => {
   if (typeof value !== 'string' || !value.trim() || value.length > max || /[\x00-\x1f\x7f]/.test(value)) throw new Error(`${name} must be nonempty text of at most ${max} characters without control characters.`);
   return value;
@@ -77,6 +78,31 @@ export function readMinimap(cwd) {
   });
   return { ...base, initialized: true, packageName: config.app_profiles?.[config.active_app_profile]?.android_package || null, places, edges };
 }
+
+// Reconstruct the public projection rather than forwarding a CLI response:
+// fingerprints, recipes, paths, and device/session state never enter this API.
+export function screenGraphProjection(value) {
+  if (!value || value.schema_version !== SCREEN_GRAPH_SCHEMA || !Array.isArray(value.places) || !Array.isArray(value.edges)) throw new Error('Unsupported screen graph.');
+  if (value.places.length > 2000 || value.edges.length > 2000) throw new Error('Screen graph exceeds the panel object limit.');
+  const placeIDs = new Set(), edgeIDs = new Set();
+  const places = value.places.map(place => {
+    const id = bounded(place?.id, 'Place ID');
+    if (placeIDs.has(id)) throw new Error('Duplicate screen ID.');
+    placeIDs.add(id);
+    return { id, label: bounded(place.label, 'Place label'), slug: bounded(place.slug, 'Place slug') };
+  });
+  const edges = value.edges.map(edge => {
+    const id = bounded(edge?.id, 'Route ID');
+    if (edgeIDs.has(id) || !Number.isSafeInteger(edge.steps) || edge.steps < 0 || typeof edge.requiresHistory !== 'boolean') throw new Error('Unsupported screen route.');
+    edgeIDs.add(id);
+    return { id, from: bounded(edge.from, 'Source ID'), to: bounded(edge.to, 'Destination ID'), steps: edge.steps, requiresHistory: edge.requiresHistory };
+  });
+  const byID = (a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  return { schema_version: SCREEN_GRAPH_SCHEMA, places: places.sort(byID), edges: edges.sort(byID) };
+}
+
+const graphResult = (status, message, graph = null) => ({ graph, graphStatus: { status, message } });
+const graphError = () => graphResult('error', 'The saved graph could not be exported safely. Ask the agent to inspect Minimap diagnostics.');
 
 // Minimap isolates its own Android subprocess groups. Stop its parent first,
 // then kill descendant groups too so cancellation cannot leave input running.
@@ -159,7 +185,9 @@ function argumentsFor(options) {
   throw new Error('Unknown navigation action.');
 }
 
-export function createMinimapBackend({ stateDir, executable = process.env.ANDROID_EMULATOR_MINIMAP ?? (fs.existsSync(path.join(os.homedir(), '.local/bin/minimap')) ? path.join(os.homedir(), '.local/bin/minimap') : 'minimap'), runCommand = runMinimap, environment = () => ({ ...process.env, PATH: [path.dirname(sdk().adb), '/opt/homebrew/bin', '/usr/local/bin', process.env.PATH].filter(Boolean).join(path.delimiter) }) } = {}) {
+export function createMinimapBackend(options = {}) {
+  const { stateDir, executable = process.env.ANDROID_EMULATOR_MINIMAP ?? (fs.existsSync(path.join(os.homedir(), '.local/bin/minimap')) ? path.join(os.homedir(), '.local/bin/minimap') : 'minimap'), runCommand = runMinimap, environment = () => ({ ...process.env, PATH: ['/opt/homebrew/bin', '/usr/local/bin', process.env.PATH].filter(Boolean).join(path.delimiter) }) } = options;
+  const explicitExecutable = options.executable !== undefined;
   let probePromise, probeAt = 0;
   const dependencies = stateDir && runCommand === runMinimap ? createNavigationDependencies({ dir: stateDir,
     environment: { ...process.env, PATH: [path.join(os.homedir(), '.local/bin'), '/opt/homebrew/bin', '/usr/local/bin', process.env.PATH].filter(Boolean).join(path.delimiter) } }) : null;
@@ -179,7 +207,8 @@ export function createMinimapBackend({ stateDir, executable = process.env.ANDROI
   }
   function runtimeEnvironment(serial, sessionDir) {
     const base = environment();
-    return { ...base, ...resolved?.env, PATH: [resolved?.env.PATH, base.PATH].filter(Boolean).join(path.delimiter), ...(serial ? { ANDROID_SERIAL: serial } : {}), ...(sessionDir ? { TMPDIR: sessionDir } : {}) };
+    const adbPath = runCommand === runMinimap ? path.dirname(sdk().adb) : null;
+    return { ...base, ...resolved?.env, PATH: [adbPath, resolved?.env.PATH, base.PATH].filter(Boolean).join(path.delimiter), ...(serial ? { ANDROID_SERIAL: serial } : {}), ...(sessionDir ? { TMPDIR: sessionDir } : {}) };
   }
   function mapFor(cwd, packageName) {
     const project = minimapLocation(cwd);
@@ -238,6 +267,42 @@ export function createMinimapBackend({ stateDir, executable = process.env.ANDROI
     create() {
       return {
         status(cwd, packageName) { return mapFor(cwd, packageName); },
+        async graph({ cwd, packageName }, { signal } = {}) {
+          let executing = false;
+          try {
+            signal?.throwIfAborted();
+            const map = mapFor(cwd, packageName);
+            if (map.error) return graphError();
+            if (!map.initialized) return graphResult('uninitialized', 'No saved screen graph exists for this project and app yet.');
+            if (map.projectRoot) {
+              const key = createHash('sha256').update(map.projectRoot).digest('hex');
+              const expected = path.join(fs.realpathSync(stateDir), 'navigation', 'maps', key, packageName);
+              if (fs.realpathSync(map.root) !== expected) return graphError();
+            }
+            const stored = readMinimap(map.root);
+            if (packageName && stored.packageName !== packageName) return graphError();
+            // probe() only locates existing executables. Do not call ensure(),
+            // prepare(), SDK resolution, or Android CLI for a graph read.
+            const candidate = dependencies && !explicitExecutable ? (await dependencies.probe()).minimap : null;
+            const file = explicitExecutable ? executable : resolved?.minimap ?? candidate?.file ?? executable;
+            if (candidate && !candidate.available && !resolved?.minimap) return graphResult('unavailable', 'Minimap graph export is unavailable. Install or configure a Minimap build with the graph command.');
+            const env = { ...environment() };
+            delete env.ANDROID_SERIAL;
+            const options = { cwd: map.root, env, signal, timeoutMs: 5000 };
+            // Both released and local binaries identify as 0.2.1. Discover the
+            // command itself without executing a device or map operation.
+            executing = true;
+            const help = await runCommand(file, ['graph', '--help'], options);
+            if (help.code !== 0 || !/\bminimap graph\b/.test(help.stdout)) return graphResult('unsupported', 'This Minimap CLI does not support graph export. Use a Minimap build with the graph command; saved navigation is unchanged.');
+            const response = await runCommand(file, ['graph'], options);
+            if (response.code !== 0 || Buffer.byteLength(response.stdout, 'utf8') > MAX_OUTPUT) return graphError();
+            const graph = screenGraphProjection(JSON.parse(response.stdout));
+            return graphResult('ok', `${graph.places.length} saved screens and ${graph.edges.length} directed routes.`, graph);
+          } catch (error) {
+            if (executing && (error.code === 'ENOENT' || error.code === 'EACCES')) return graphResult('unavailable', 'Minimap graph export is unavailable. Install or configure a Minimap build with the graph command.');
+            return graphError();
+          }
+        },
         async prepare({ cwd, packageName }, { signal } = {}) {
           await resolveDependencies(signal);
           const availability = await provider.probe();

@@ -6,6 +6,7 @@
     <title>Android Emulators</title>
     <meta name="emulator-theme" content="" />
     <link rel="stylesheet" href="/static/app.css" />
+    <link rel="stylesheet" href="/static/screen-graph.css" />
   </head>
   <body>
     <!-- All devices pinned to this chat live inside this panel. -->
@@ -209,14 +210,28 @@
                 <div id="minimap-current-label" class="label">Last located screen</div>
                 <div id="minimap-current" class="minimap-current">Not located yet</div>
               </section>
-              <section id="minimap-places-section" class="group" aria-labelledby="minimap-places-label" hidden>
-                <div id="minimap-places-label" class="label">Known screens</div>
-                <ul id="minimap-places" class="list minimap-list"></ul>
+              <div class="minimap-tabs" role="tablist" aria-label="Screen map view">
+                <button type="button" id="minimap-graph-tab" role="tab" aria-selected="true" aria-controls="minimap-graph-panel">Graph</button>
+                <button type="button" id="minimap-navigation-tab" role="tab" aria-selected="false" aria-controls="minimap-navigation-panel" tabindex="-1">Navigate</button>
+              </div>
+              <section id="minimap-graph-panel" role="tabpanel" aria-labelledby="minimap-graph-tab">
+                <p id="minimap-graph-status" class="muted" role="status">Loading saved graph…</p>
+                <div id="minimap-graph-selection" class="minimap-graph-selection" hidden>
+                  <span id="minimap-graph-selected" class="muted"></span>
+                  <button type="button" id="minimap-graph-go" class="button" disabled>Go to selected screen</button>
+                </div>
+                <div id="minimap-graph" class="screen-graph" hidden></div>
               </section>
-              <section id="minimap-routes-section" class="group" aria-labelledby="minimap-routes-label" hidden>
-                <div id="minimap-routes-label" class="label">Learned routes</div>
-                <ul id="minimap-routes" class="list minimap-list"></ul>
-              </section>
+              <div id="minimap-navigation-panel" role="tabpanel" aria-labelledby="minimap-navigation-tab" hidden>
+                <section id="minimap-places-section" class="group" aria-labelledby="minimap-places-label" hidden>
+                  <div id="minimap-places-label" class="label">Known screens</div>
+                  <ul id="minimap-places" class="list minimap-list"></ul>
+                </section>
+                <section id="minimap-routes-section" class="group" aria-labelledby="minimap-routes-label" hidden>
+                  <div id="minimap-routes-label" class="label">Learned routes</div>
+                  <ul id="minimap-routes" class="list minimap-list"></ul>
+                </section>
+              </div>
             </aside>
           </section>
 

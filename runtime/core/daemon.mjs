@@ -10,6 +10,7 @@ import { DevicePins } from './lib/device-pins.mjs';
 import { createConnectedDeviceCatalog } from './lib/connected-devices.mjs';
 import { Logcat } from './lib/logcat.mjs';
 import { Backends } from './backends.mjs';
+import { screenGraphProjection } from './backends/minimap.mjs';
 import { typeIntoDevice } from './lib/text-input.mjs';
 import { NavigationMemory, appPackage } from './lib/navigation-memory.mjs';
 import { errorDetails } from './lib/errors.mjs';
@@ -122,8 +123,9 @@ export async function startDaemon({
   }
   async function operation(threadId, work, tool, args = {}) {
     if (transferring.has(threadId)) throw new Error('This device is being moved to another chat. Refresh the device list.');
-    const navigationRead = tool === 'emulator_navigate' && ['status', 'cancel'].includes(args.action);
+    const navigationRead = tool === 'emulator_navigate' && ['status', 'graph', 'cancel'].includes(args.action);
     if (navigationRuns.has(threadId) && !navigationRead && !passiveTools.has(tool)) throw new Error('Navigation is using this device. Stop it from Screen map before overriding it.');
+    if (tool === 'emulator_navigate' && args.action === 'graph') return work();
     if (tool !== 'emulator_navigate' && !passiveTools.has(tool)) invalidatePlace(threadId);
     activeOperations.set(threadId, (activeOperations.get(threadId) ?? 0) + 1);
     try { return await work(); }
@@ -418,6 +420,26 @@ export async function startDaemon({
         return { text: 'Navigation stopped. Inspect the device before continuing; completed actions are not undone.', structuredContent: { map: await navigationMap(threadId) } };
       }
       if (args.action === 'status') return { text: 'Saved screens and routes.', structuredContent: { map: await navigationMap(threadId) } };
+      if (args.action === 'graph') {
+        const { cwd, packageName, navigator, provider } = await navigation.context(threadId);
+        let graph = null, status = 'unsupported';
+        try {
+          if (typeof navigator.graph === 'function') {
+            const result = await backends.measure(threadId, 'navigation', provider, () => navigator.graph({ cwd, packageName }));
+            status = result?.graphStatus?.status;
+            if (!['ok', 'uninitialized', 'unsupported', 'unavailable', 'error'].includes(status)) throw new Error('Invalid graph response.');
+            if (status === 'ok') graph = screenGraphProjection(result.graph);
+          }
+        } catch { status = 'error'; }
+        const message = {
+          ok: `${graph?.places.length ?? 0} saved screens and ${graph?.edges.length ?? 0} directed routes.`,
+          uninitialized: 'No saved screen graph exists for this project and app yet.',
+          unsupported: 'This navigation provider does not support graph export. Use a Minimap build with the graph command; saved navigation is unchanged.',
+          unavailable: 'Minimap graph export is unavailable. Install or configure a Minimap build with the graph command.',
+          error: 'The saved graph could not be exported safely. Ask the agent to inspect Minimap diagnostics.',
+        }[status];
+        return { text: message, structuredContent: { graph, graphStatus: { status, message } } };
+      }
       if ((activeOperations.get(threadId) ?? 0) > 1) throw new Error('Finish this chat’s active operation before starting navigation.');
       return withNavigation(threadId, async signal => {
         let context = await navigation.context(threadId);
@@ -1288,6 +1310,8 @@ export async function startDaemon({
   const STATIC = {
     '/static/app.js': ['app.js', 'text/javascript'],
     '/static/app.css': ['app.css', 'text/css'],
+    '/static/screen-graph.mjs': ['screen-graph.mjs', 'text/javascript'],
+    '/static/screen-graph.css': ['screen-graph.css', 'text/css'],
   };
 
   const chatTools = new Set([...THREADLESS, 'emulator_panel', 'emulator_start', 'emulator_create', 'emulator_pin', 'emulator_devices', 'emulator_status', 'emulator_diagnostics', 'emulator_apk']);
@@ -1296,7 +1320,7 @@ export async function startDaemon({
     const id = pins.resolve(caller, args.deviceId, { allowEmpty: true });
     const { deviceId, ...options } = args;
     return operation(id, async () => {
-      if (leases.get(id)?.kind === 'physical') {
+      if (!(tool === 'emulator_navigate' && options.action === 'graph') && leases.get(id)?.kind === 'physical') {
         const state = (await connectedDevices.list()).find(device => device.serial === leases.get(id)?.serial)?.state ?? 'disconnected';
         if (pins.resolve(caller, id) !== id) throw new Error('The device pin changed. Refresh the device list.');
         const next = state === 'device' ? 'ready' : state;
