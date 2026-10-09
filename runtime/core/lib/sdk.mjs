@@ -20,20 +20,26 @@ export function sdk() {
     path.join(os.homedir(), 'Library', 'Android', 'sdk'),
     path.join(os.homedir(), 'Android', 'Sdk'),
   ].filter(Boolean);
-  const root = candidates.find((candidate) => fs.existsSync(path.join(candidate, 'emulator', 'emulator')));
+  const root = candidates.find((candidate) => fs.existsSync(path.join(candidate, 'platform-tools', 'adb')));
   if (!root) {
     throw new Error(
-      `Android SDK emulator not found. Checked: ${candidates.join(', ')}. ` +
-        'Install the Android Emulator with Android Studio or sdkmanager, or set ANDROID_HOME.',
+      `Android SDK Platform Tools not found. Checked: ${candidates.join(', ')}. ` +
+        'Install Platform Tools with Android Studio or sdkmanager, or set ANDROID_HOME.',
     );
   }
   cachedSdk = {
     root,
     adb: path.join(root, 'platform-tools', 'adb'),
-    emulator: path.join(root, 'emulator', 'emulator'),
+    emulator: fs.existsSync(path.join(root, 'emulator', 'emulator')) ? path.join(root, 'emulator', 'emulator') : null,
     aapt2: latestBuildTool(root, 'aapt2'),
   };
   return cachedSdk;
+}
+
+export function requireEmulator() {
+  const { emulator } = sdk();
+  if (!emulator) throw new Error('Android Emulator is not installed in this SDK. Install it with Android Studio or sdkmanager to create or start a virtual device. Connected physical devices only require Platform Tools.');
+  return emulator;
 }
 
 // Runs a process without a shell and resolves with its exit status and output.

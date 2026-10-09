@@ -234,8 +234,10 @@ function delay(ms) {
 }
 
 export class Device {
-  constructor(serial, { capture, uiNodes } = {}) {
+  constructor(serial, { capture, uiNodes, kind = 'emulator' } = {}) {
+    if (!['emulator', 'physical'].includes(kind)) throw new Error('Device kind must be emulator or physical.');
     this.serial = serial;
+    this.kind = kind;
     this.capture = capture;
     this.readUiNodes = uiNodes;
   }
@@ -462,6 +464,7 @@ export class Device {
   }
 
   async emu(args) {
+    if (this.kind === 'physical') throw new Error('Emulator console commands are unavailable on physical devices. Select an emulator for this operation.');
     const result = await adbOk(this.serial, ['emu', ...args], { timeoutMs: 10_000 });
     if (/^KO/m.test(result.stdout)) throw new Error(`Emulator console rejected "${args.join(' ')}": ${result.stdout.trim()}`);
     return result.stdout.trim();
@@ -479,6 +482,10 @@ export class Device {
   }
 
   async applySettings({ darkMode, fontScale, location, battery, rotate, posture }) {
+    if (this.kind === 'physical') {
+      const unsupported = Object.entries({ location, battery, rotate, posture }).filter(([, value]) => value !== undefined).map(([name]) => name);
+      if (unsupported.length) throw new Error(`Physical devices do not support emulator settings: ${unsupported.join(', ')}. Select an emulator to change these settings.`);
+    }
     const postureId = { folded: 1, 'half-folded': 2, unfolded: 3 }[posture];
     if (posture !== undefined && !Number.isInteger(postureId)) throw new Error('posture must be folded, half-folded, or unfolded.');
     const applied = [];

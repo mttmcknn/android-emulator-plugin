@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { avdDiskBytes, avdPostures, PROFILES, systemImages } from './lib/avds.mjs';
 import { apkInfo, findNode, formatNodes, resolveKeycode, scopedAdb } from './lib/device.mjs';
 import { LeaseManager } from './lib/leases.mjs';
+import { DevicePins } from './lib/device-pins.mjs';
+import { createConnectedDeviceCatalog } from './lib/connected-devices.mjs';
 import { Logcat } from './lib/logcat.mjs';
 import { Backends } from './backends.mjs';
 import { typeIntoDevice } from './lib/text-input.mjs';
@@ -31,12 +33,18 @@ const MAX_UPLOAD_BYTES = 1024 * 1024 * 1024;
 const STREAM_WAIT_MS = 8_000;
 const BRIDGE_IDLE_MS = 20_000;
 
+function navigationText(result) {
+  const summary = result.summary ?? `Navigation: ${result.status}.`;
+  if (!result.currentPlace?.needsLabel) return summary;
+  return `${summary}\nThis screen needs a descriptive name. Use fresh screenshot/UI evidence to call the navigation tool with action "whereami" and a short label describing the screen's purpose before navigating away. Inspect the current screen first if you have not already. Never guess from a tap target or an old screenshot. Omit personal data and do not ask the user to name it.`;
+}
+
 // Integration owns storage, helper discovery, session lifecycle and host appearance.
 // No host implementation is loaded by this module. Without session data, cleanup is idle-only.
 export async function startDaemon({
   dir, port: requestedPort = 0, version = RUNTIME_VERSION, helperVersion = version,
   readSessions = async () => new Map(), appearance = {}, panelScript = null, panelMetadata = () => ({}),
-  providers = {}, createLeases = options => new LeaseManager(options), createLogcat = (serial, onLines) => new Logcat(serial, onLines),
+  providers = {}, createLeases = options => new LeaseManager(options), createLogcat = (serial, onLines) => new Logcat(serial, onLines), createConnectedDevices = createConnectedDeviceCatalog,
   log = message => process.stdout.write(`${new Date().toISOString()} ${message}\n`),
 }) {
   if (!dir || !path.isAbsolute(dir)) throw new Error('An absolute emulator state directory is required.');
@@ -62,7 +70,18 @@ export async function startDaemon({
   const tokenFile = path.join(dir, 'token');
   if (!fs.existsSync(tokenFile)) fs.writeFileSync(tokenFile, crypto.randomBytes(24).toString('hex'), { mode: 0o600 });
   const token = fs.readFileSync(tokenFile, 'utf8').trim();
-  const leases = createLeases({ dir, log, readSessions });
+  let pins;
+  const readDeviceSessions = async ids => {
+    const original = [...ids];
+    const owners = original.map(id => pins?.owner(id) ?? id);
+    const sessions = await readSessions([...new Set(owners)]);
+    return new Map(original.map((id, index) => [id, sessions.get(owners[index])]));
+  };
+  const leases = createLeases({ dir, log, readSessions: readDeviceSessions });
+  pins = new DevicePins({ dir, leases });
+  const connectedDevices = createConnectedDevices({ listDevices: () => leases.devices?.() ?? [] });
+  const workspaceViewers = new Map();
+  const transferring = new Set();
   const settings = new Settings(dir);
   let theme = appearance.read?.() ?? null;
   const recorders = new Map();
@@ -71,7 +90,7 @@ export async function startDaemon({
   const activeOperations = new Map();
   const navigationRuns = new Map();
   const lastPlaces = new Map();
-  const navigation = new NavigationMemory({ dir, readSessions, backends });
+  const navigation = new NavigationMemory({ dir, readSessions: readDeviceSessions, backends });
   const graphRuns = new Map();
   const passiveTools = new Set(['emulator_status', 'emulator_diagnostics', 'emulator_panel', 'emulator_screenshot', 'emulator_capture', 'emulator_ui_tree', 'emulator_observe', 'emulator_wait_for', 'emulator_record', 'emulator_context', 'emulator_capture_selection']);
   function navigationEvent(threadId, busy) {
@@ -96,11 +115,13 @@ export async function startDaemon({
     const capture = backends.get(threadId, 'capture');
     const navigation = backends.get(threadId, 'navigation');
     return backends.get(threadId, 'device').create(serial, {
+      kind: leases.get(threadId)?.kind ?? 'emulator',
       capture: target => backends.measure(threadId, 'capture', capture, () => capture.capture(target)),
       uiNodes: navigation.uiNodes,
     });
   }
   async function operation(threadId, work, tool, args = {}) {
+    if (transferring.has(threadId)) throw new Error('This device is being moved to another chat. Refresh the device list.');
     const navigationRead = tool === 'emulator_navigate' && ['status', 'cancel'].includes(args.action);
     if (navigationRuns.has(threadId) && !navigationRead && !passiveTools.has(tool)) throw new Error('Navigation is using this device. Stop it from Screen map before overriding it.');
     if (tool !== 'emulator_navigate' && !passiveTools.has(tool)) invalidatePlace(threadId);
@@ -132,8 +153,13 @@ export async function startDaemon({
   const panelUrl = (threadId) => `${origin()}/t/${encodeURIComponent(threadId)}?k=${channelKey(threadId)}`;
   // Embedded panels can't open sockets to the helper; they stream through `emulator_stream` with this per-thread key,
   // so a panel can only ever reach the thread (or manager) it was opened for.
-  const channelKey = (thread) => scopedKey(token, `channel:${thread}`);
+  const channelKey = (thread, workspace = false) => scopedKey(token, workspace ? `workspace:${thread}` : `channel:${thread}:${pins.owner(thread)}`);
   const panelMeta = (thread) => ({ panelUrl: panelUrl(thread), channel: { thread, key: channelKey(thread) } });
+  const workspaceMeta = thread => ({ workspace: true, panelUrl: `${origin()}/t/${encodeURIComponent(thread)}?workspace=1&k=${channelKey(thread, true)}`, channel: { thread, key: channelKey(thread, true), workspace: true } });
+  const panelResult = (threadId, text, structuredContent) => ({
+    text, structuredContent,
+    meta: { panel: workspaceMeta(threadId), ...panelMetadata(threadId) },
+  });
   const captureMeta = (thread, capture) => ({ capture: { downloadUrl: `${origin()}/captures/${encodeURIComponent(thread)}/${capture.id}?k=${scopedKey(token, `capture:${thread}:${capture.id}`)}` } });
   /** @type {Map<string, {thread: string, viewer: BridgeViewer}>} */
   const bridges = new Map();
@@ -150,7 +176,7 @@ export async function startDaemon({
 
   function requireLease(threadId) {
     const lease = leases.get(threadId);
-    if (!lease) throw new Error('This thread has no emulator. Call emulator_start (or emulator_create if no AVDs exist) first.');
+    if (!lease) throw new Error('This chat has no device. Pin a connected phone, start an emulator, or create one if no virtual devices exist.');
     if (lease.state !== 'ready') throw new Error(`This thread's emulator is still ${lease.state}.`);
     return lease;
   }
@@ -158,12 +184,46 @@ export async function startDaemon({
   function publicLease(lease) {
     if (!lease) return null;
     const { avd, serial, readOnly, state, startedAt } = lease;
-    return { avd, serial, readOnly, state, startedAt };
+    const id = Object.keys(leases.leases).find(id => leases.leases[id] === lease);
+    return { id, label: lease.label ?? avd?.replaceAll('_', ' ') ?? serial, kind: lease.kind ?? 'emulator', avd, serial, readOnly, state, startedAt };
+  }
+
+  async function deviceInventory(threadId) {
+    const connected = await connectedDevices.list();
+    const info = await readSessions([...new Set(Object.values(pins.owners))]);
+    const connectedRows = connected.map(device => {
+      const id = pins.findConnected(device);
+      return { serial: device.serial, label: device.label, state: device.state, deviceId: id, ownerThreadId: id ? pins.owner(id) : undefined, ownerTitle: id ? info.get(pins.owner(id))?.title ?? 'Another chat' : undefined };
+    });
+    for (const id of pins.ids(threadId)) {
+      const lease = leases.get(id);
+      if (lease.kind !== 'physical') continue;
+      const state = connected.find(device => device.serial === lease.serial)?.state ?? 'disconnected';
+      const next = state === 'device' ? 'ready' : state;
+      if (lease.state !== next) leases.update(id, { state: next });
+    }
+    const ids = pins.ids(threadId);
+    const request = [...pins.requests.entries()].reverse().find(([, value]) => value.to === threadId && value.expires > Date.now() && pins.owner(value.id) === value.from);
+    return { text: `${ids.length} device(s) pinned to this chat.`, structuredContent: {
+      devices: ids.map(id => publicLease(leases.get(id))), connectedDevices: connectedRows,
+      avds: await leases.avds(), profiles: PROFILES.map(({ id, name, form }) => ({ id, name, form })),
+      inUseAvds: [...(await leases.inUseAvds?.() ?? [])],
+      images: systemImages().map(({ id, label, tags }) => ({ id, label, tablet: tags.includes('tablet') })),
+      createdByThisThread: pins.allIds(threadId).flatMap(id => leases.ownedAvds(id)),
+      settings: { keepCreatedDevices: settings.get('keepCreatedDevices') },
+      ...(request ? { confirmationRequired: { requestId: request[0], label: leases.get(request[1].id)?.label ?? 'Device', ownerTitle: info.get(request[1].from)?.title ?? 'Another chat' } } : {}),
+    }, meta: { panels: Object.fromEntries(ids.map(id => [id, panelMeta(id)])) } };
+  }
+
+  function pushWorkspace(threadId) {
+    const set = workspaceViewers.get(threadId);
+    if (!set?.size) return;
+    deviceInventory(threadId).then(result => { for (const viewer of set) viewer.sendJson({ t: 'workspace', ...result }); }, error => { for (const viewer of set) viewer.sendJson({ t: 'error', error: error.message }); });
   }
 
   async function status(threadId, { forPane = false } = {}) {
     const lease = leases.get(threadId);
-    const postures = lease ? avdPostures(lease.avd) : [];
+    const postures = lease && lease.kind !== 'physical' ? avdPostures(lease.avd) : [];
     const foldable = postures.length ? {
       postures,
       posture: lease.state === 'ready' ? await deviceFor(threadId, lease.serial).posture().catch(() => null) : null,
@@ -191,6 +251,7 @@ export async function startDaemon({
   const text = (value) => ({ text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) });
 
   function pushStatus(threadId) {
+    pushWorkspace(pins.owner(threadId));
     const set = viewers.get(threadId);
     if (!set?.size) return;
     status(threadId, { forPane: true }).then((value) => {
@@ -224,9 +285,9 @@ export async function startDaemon({
 
   async function managerOverview() {
     const avds = await leases.avds();
-    const leased = Object.values(leases.leases).filter((lease) => leases.get(lease.threadId));
+    const leased = Object.entries(leases.leases).filter(([id]) => leases.get(id)).map(([id, lease]) => ({ ...lease, id, threadId: pins.owner(id) }));
     const inUse = await leases.inUseAvds?.() ?? new Set(leased.map(lease => lease.avd));
-    const info = await readSessions([...leased.map(({ threadId }) => threadId), ...Object.values(leases.createdAvds).map(({ threadId }) => threadId)]);
+    const info = await readSessions([...leased.map(({ threadId }) => threadId), ...Object.values(leases.createdAvds).map(({ threadId }) => pins.owner(threadId))]);
     const title = (threadId) => info.get(threadId)?.title ?? null;
     const devices = await Promise.all(avds.map(async (name) => {
       const owner = leases.createdAvds[name];
@@ -236,12 +297,12 @@ export async function startDaemon({
         inUse: inUse.has(name),
         bytes,
         size: formatBytes(bytes),
-        createdBy: owner ? { threadId: owner.threadId, title: title(owner.threadId), keep: owner.keep } : null,
+        createdBy: owner ? { threadId: pins.owner(owner.threadId), title: title(pins.owner(owner.threadId)), keep: owner.keep } : null,
         runningFor: leased.filter((lease) => lease.avd === name).map(({ threadId }) => ({ threadId, title: title(threadId) })),
       };
     }));
     return {
-      running: leased.map((lease) => ({ ...publicLease(lease), threadId: lease.threadId, threadTitle: title(lease.threadId) })),
+      running: leased.map((lease) => ({ ...publicLease(lease), id: lease.id, threadId: lease.threadId, threadTitle: title(lease.threadId) })),
       devices,
       totalSize: formatBytes(devices.reduce((sum, device) => sum + device.bytes, 0)),
       pluginSize: formatBytes(devices.filter((device) => device.createdBy).reduce((sum, device) => sum + device.bytes, 0)),
@@ -252,7 +313,7 @@ export async function startDaemon({
     const info = await apkInfo(file);
     const device = deviceFor(threadId, serial);
     await device.install([file]).catch((error) => {
-      if (/MISSING_SPLIT/.test(error.message)) throw new Error(`${info.label ?? info.packageName} is a split APK. Install it together with its split APKs (emulator_install with every .apk).`);
+      if (/MISSING_SPLIT/.test(error.message)) throw new Error(`${info.label ?? info.packageName} is a split APK. Use the install app tool with every .apk in apkPaths to install the splits together.`);
       throw error;
     });
     if (launch && info.packageName) {
@@ -337,7 +398,7 @@ export async function startDaemon({
           const result = await backends.measure(threadId, 'navigation', provider,
             () => navigator.execute({ ...args, cwd, packageName: foreground, serial: requireLease(threadId).serial, automatic: true }, { signal }));
           rememberPlace(threadId, result);
-          return { text: result.summary ?? `Navigation: ${result.status}.`, structuredContent: { navigation: result } };
+          return { text: navigationText(result), structuredContent: { navigation: result } };
         });
       } catch (error) {
         navigation.report(threadId, 'error', 'Screen memory is unavailable. Device controls remain available; the agent can inspect navigation diagnostics.', String(error.message).slice(0,300));
@@ -389,7 +450,7 @@ export async function startDaemon({
           rememberPlace(threadId, result);
           const map = await navigationMap(threadId, context);
           map.busy = false;
-          return { text: result.summary ?? `Navigation: ${result.status}.`, structuredContent: { result, map } };
+          return { text: navigationText(result), structuredContent: { result, map } };
         });
       });
     },
@@ -417,10 +478,11 @@ export async function startDaemon({
       } finally { backendSwitches.delete(threadId); }
     },
     // App-only transport for embedded panels: queued pane messages in, viewer messages out (long-polled).
-    async emulator_stream(callerThread, { thread, key, session, send = [], wait = false }) {
-      if (!matchesKey(key, channelKey(String(thread ?? '')))) throw new Error('This panel is not authorized for that emulator.');
-      if (callerThread && thread !== 'manager' && callerThread !== thread) throw new Error('This panel belongs to a different thread.');
-      const id = `${thread}\n${String(session ?? '').slice(0, 64)}`;
+    async emulator_stream(callerThread, { thread, key, session, workspace = false, send = [], wait = false }) {
+      if (!matchesKey(key, channelKey(String(thread ?? ''), workspace))) throw new Error('This panel is not authorized for that device.');
+      if (callerThread && thread !== 'manager' && callerThread !== (workspace ? thread : pins.owner(thread))) throw new Error('This panel belongs to a different thread.');
+      if (!workspace && thread !== 'manager' && !leases.get(thread)) throw new Error('This device is no longer pinned. Refresh the device list.');
+      const id = `${workspace ? 'workspace:' : ''}${thread}\n${String(session ?? '').slice(0, 64)}`;
       let entry = bridges.get(id);
       // Keep a closed session briefly so late polls/input cannot resurrect a hidden pane.
       if (entry?.viewer.closed) {
@@ -429,6 +491,7 @@ export async function startDaemon({
       }
       if (!entry) {
         entry = { thread, viewer: new BridgeViewer() };
+        entry.viewer.workspace = workspace;
         bridges.set(id, entry);
         if (Array.isArray(send) && send.some((message) => message?.t === 'bye')) {
           entry.viewer.close();
@@ -449,36 +512,56 @@ export async function startDaemon({
       return { text: '', structuredContent: { messages } };
     },
 
-    async emulator_status(threadId) {
-      return text(await status(threadId));
+    async emulator_status(threadId, { deviceId } = {}) {
+      const inventory = await deviceInventory(threadId);
+      const ids = pins.ids(threadId);
+      const id = deviceId !== undefined ? pins.resolve(threadId, deviceId) : ids.length === 1 ? ids[0] : threadId;
+      const detail = ids.length !== 1 && deviceId === undefined ? { emulator: null, display: { viewers: 0, streaming: false } } : await status(id);
+      return text({ ...detail, ...inventory.structuredContent });
     },
 
     async emulator_diagnostics(threadId) {
       // Do not use leases.get(): it removes stale leases. Preserve evidence and idle timers.
-      const lease = Object.hasOwn(leases.leases, threadId) ? leases.leases[threadId] : null;
-      const entry = mirrors.get(threadId);
+      const ids = Object.keys(leases.leases).filter(id => pins.owner(id) === threadId);
+      const id = ids.length === 1 ? ids[0] : null;
+      const lease = id ? leases.leases[id] : null;
       return { text: '', structuredContent: {
         schemaVersion: 1,
-        device: leaseDiagnostics(lease),
+        device: ids.length > 1 ? { state: 'multiple', devices: ids.map(id => ({ id, ...leaseDiagnostics(leases.leases[id]) })) } : leaseDiagnostics(lease),
         display: {
-          viewers: viewers.get(threadId)?.size ?? 0,
-          encoderActive: Boolean(entry),
-          videoSessionReady: Boolean(entry?.mirror.session),
-          retryPending: mirrorRetries.has(threadId),
-          consecutiveFailures: mirrorFailures.get(threadId) ?? 0,
-          inputActive: typing.has(threadId) || navigationRuns.has(threadId),
-          navigationActive: navigationRuns.has(threadId),
+          viewers: ids.reduce((sum, id) => sum + (viewers.get(id)?.size ?? 0), 0),
+          encoderActive: ids.some(id => mirrors.has(id)),
+          videoSessionReady: ids.some(id => Boolean(mirrors.get(id)?.mirror.session)),
+          retryPending: ids.some(id => mirrorRetries.has(id)),
+          consecutiveFailures: ids.reduce((sum, id) => sum + (mirrorFailures.get(id) ?? 0), 0),
+          inputActive: ids.some(id => typing.has(id) || navigationRuns.has(id)),
+          navigationActive: ids.some(id => navigationRuns.has(id)),
         },
       } };
     },
 
     async emulator_panel(threadId) {
-      const lease = leases.get(threadId);
-      return {
-        text: lease ? `Showing ${lease.avd} (${lease.serial}) in the emulator panel.` : 'Showing the emulator panel. No emulator is running for this thread yet.',
-        structuredContent: { emulator: publicLease(lease) },
-        meta: { panel: panelMeta(threadId), ...panelMetadata(threadId) },
-      };
+      const ids = pins.ids(threadId);
+      const lease = ids.length === 1 ? leases.get(ids[0]) : null;
+      return panelResult(threadId,
+        ids.length > 1 ? `Showing ${ids.length} pinned devices in the Android panel.` : lease ? `Showing ${lease.avd} (${lease.serial}) in the emulator panel.` : 'Showing the Android panel. No device is pinned to this chat yet.',
+        { emulator: publicLease(lease) });
+    },
+
+    emulator_devices: threadId => deviceInventory(threadId),
+
+    async emulator_pin(threadId, { serial }) {
+      const device = (await connectedDevices.list({ fresh: true })).find(device => device.serial === serial);
+      if (!device) throw new Error('That connected device is no longer available. Refresh the device list.');
+      const result = await pins.pin(threadId, device);
+      if (result.confirmationRequired) {
+        const owner = (await readSessions([result.confirmationRequired.ownerThreadId])).get(result.confirmationRequired.ownerThreadId);
+        result.confirmationRequired.ownerTitle = owner?.title ?? 'Another chat';
+        pushWorkspace(threadId);
+        return panelResult(threadId, 'This device is pinned to another chat. Confirm the move in the device panel.', result);
+      }
+      pushWorkspace(threadId);
+      return panelResult(threadId, `${device.label} is pinned to this chat.`, { emulator: publicLease(result.lease) });
     },
 
     async emulator_manager(threadId) {
@@ -507,22 +590,25 @@ export async function startDaemon({
       return { text: 'Settings saved.', structuredContent: { values } };
     },
 
-    async emulator_apk(threadId, { file, action = 'info', resourcePath }) {
+    async emulator_apk(threadId, { file, action = 'info', resourcePath, deviceId }) {
       const apk = resourcePath;
       if (!apk) throw new Error(`The host did not provide a file path for ${file?.name ?? 'this APK'}.`);
       if (action === 'info') {
         const info = await apkInfo(apk);
+        const devices = pins.ids(threadId).map(id => publicLease(leases.get(id)));
         return {
           text: `${info.label ?? info.packageName} ${info.versionName ?? ''}`.trim(),
-          structuredContent: { apk: { ...info, file: undefined, name: file?.name }, emulator: publicLease(leases.get(threadId)) },
-          meta: { panel: panelMeta(threadId) },
+          structuredContent: { apk: { ...info, file: undefined, name: file?.name }, devices, emulator: devices.length === 1 ? devices[0] : null },
         };
       }
       if (action !== 'install') throw new Error('action must be info or install.');
-      let lease = leases.get(threadId);
-      if (!lease) lease = await leases.start(threadId, { avd: defaultAvd(await leases.avds()) });
-      const info = await installAndLaunch(threadId, lease.serial, apk);
-      return { text: `Installed and opened ${info.label ?? info.packageName} on ${lease.avd}.`, structuredContent: { installed: true, emulator: publicLease(lease) } };
+      let id = pins.resolve(threadId, deviceId, { allowEmpty: true });
+      if (!leases.get(id)) ({ id } = await pins.start(threadId, { avd: defaultAvd(await leases.avds()) }));
+      return operation(id, async () => {
+        const lease = requireLease(id);
+        const info = await installAndLaunch(id, lease.serial, apk);
+        return { text: `Installed and opened ${info.label ?? info.packageName} on ${lease.avd}.`, structuredContent: { installed: true, emulator: publicLease(lease) } };
+      }, 'emulator_apk');
     },
 
     async emulator_mentions(threadId, { query = '' }) {
@@ -552,7 +638,7 @@ export async function startDaemon({
       try { capture = await saveRecording(threadId, lease); }
       finally { pushStatus(threadId); }
       return {
-        text: `Saved a ${capture.seconds}s recording to ${capture.file}. Use emulator_capture to copy the video file or inspect timestamped frames.`,
+        text: `Saved a ${capture.seconds}s recording to ${capture.file}. Use the saved capture to copy the video file or inspect timestamped frames.`,
         structuredContent: { file: capture.file, seconds: capture.seconds, capture },
         meta: captureMeta(threadId, capture),
       };
@@ -566,19 +652,23 @@ export async function startDaemon({
     },
 
     async emulator_create(threadId, { profile, systemImage, name, keep = settings.get('keepCreatedDevices'), start = true }) {
-      const created = await leases.create(threadId, { profileId: profile, imageId: systemImage, name, keep });
+      const id = pins.allocate(threadId);
+      const created = await leases.create(id, { profileId: profile, imageId: systemImage, name, keep });
       const summary = `Created ${created.name} (${created.profile}, ${created.image})${keep ? '' : '; it is deleted when this thread is archived'}.`;
       if (!start) return text(summary);
-      const lease = await leases.start(threadId, { avd: created.name });
-      return text({ created: summary, emulator: publicLease(lease), next: 'Use the existing device panel. Call emulator_panel only if it is not open or the user asks to show it.' });
+      const lease = await leases.start(id, { avd: created.name });
+      pushWorkspace(threadId);
+      return panelResult(threadId, `${summary} ${lease.avd} (${lease.serial}) is ${lease.state}.`, { created: summary, emulator: publicLease(lease) });
     },
 
-    async emulator_start(threadId, { avd, readOnly, coldBoot } = {}) {
-      const lease = await leases.start(threadId, { avd: avd ?? defaultAvd(await leases.avds()), readOnly, coldBoot });
-      return text({ emulator: publicLease(lease), next: 'Use the existing device panel. Call emulator_panel only if it is not open or the user asks to show it.' });
+    async emulator_start(threadId, { avd, readOnly, coldBoot, deviceId, newInstance = false } = {}) {
+      const { lease } = await pins.start(threadId, { avd: avd ?? defaultAvd(await leases.avds()), readOnly, coldBoot, deviceId, newInstance });
+      pushWorkspace(threadId);
+      return panelResult(threadId, `${lease.avd} (${lease.serial}) is ${lease.state}.`, { emulator: publicLease(lease) });
     },
 
     async emulator_stop(threadId, { deleteDevice = false } = {}) {
+      if ((activeOperations.get(threadId) ?? 0) > 1 || typing.has(threadId)) throw new Error('Finish this device’s active operation before stopping or unpinning it.');
       const lease = leases.get(threadId);
       const avd = lease?.avd;
       const capture = lease && isRecording(lease.serial) ? await saveRecording(threadId, lease) : null;
@@ -586,7 +676,7 @@ export async function startDaemon({
       const owned = leases.ownedAvds(threadId).map(({ name }) => name);
       const targets = deleteDevice ? (avd ? [avd] : owned).filter((name) => owned.includes(name)) : [];
       for (const name of targets) await leases.deleteOwned(threadId, name);
-      const parts = [stopped ? `Stopped ${avd}.` : 'This thread had no running emulator.'];
+      const parts = [stopped ? `${lease.kind === 'physical' ? 'Unpinned' : 'Stopped'} ${avd}.` : 'This chat had no device at that pin.'];
       if (capture) parts.push(`Saved the active recording to ${capture.file}.`);
       if (targets.length) parts.push(`Deleted ${targets.join(', ')}.`);
       else if (deleteDevice && avd) parts.push(`Kept ${avd} because this thread did not create it.`);
@@ -648,7 +738,7 @@ export async function startDaemon({
       }
       const nodes = await device.uiNodes();
       const { node, matches } = findNode(nodes, { text: label, description, resourceId });
-      if (!node) throw new Error('No visible UI node matched. It may be off-screen: swipe and retry, or call emulator_ui_tree to inspect the screen.');
+      if (!node) throw new Error('No visible screen element matched. It may be off-screen: scroll to it, or read the screen elements to find the target.');
       if (durationMs === undefined && matches === 1 && !node.password && !node.editable) {
         const selector = [['resource_id', 'resourceId'], ['content_desc', 'description'], ['text', 'text']]
           .find(([, key]) => node[key] && nodes.filter(n => n[key] === node[key]).length === 1);
@@ -730,7 +820,7 @@ export async function startDaemon({
       const { screenshot, ...details } = observation;
       const errors = Object.entries(details.errors).map(([part, error]) => `${part}: ${error}`);
       return {
-        text: [`Foreground: ${details.foregroundActivity ?? 'unavailable'}`, 'Read concurrently; the screenshot and elements may differ during animation.', details.nodes ? formatNodes(details.nodes) : 'UI elements unavailable.', ...errors].join('\n'),
+        text: [`Foreground: ${details.foregroundActivity ?? 'unavailable'}`, 'Read concurrently; the screenshot and elements may differ during animation.', details.nodes ? formatNodes(details.nodes) : 'UI elements unavailable.', ...errors, ...(learned ? [learned.text] : [])].join('\n'),
         ...(screenshot ? { image: { data: screenshot.toString('base64'), mimeType: 'image/png' } } : {}),
         structuredContent: { serial, ...details, ...(learned?.structuredContent ?? {}), learning: navigation.learning.get(threadId) },
       };
@@ -746,10 +836,11 @@ export async function startDaemon({
     async emulator_app(threadId, options) {
       const device = deviceFor(threadId, requireLease(threadId).serial);
       const result = await device.app(options);
+      let learned;
       if (options.action === 'restart') {
-        try { await learnNavigation(threadId, device, { action: 'whereami' }, { packageName: options.packageName }); } catch {}
+        try { learned = await learnNavigation(threadId, device, { action: 'whereami' }, { packageName: options.packageName }); } catch {}
       }
-      return { ...text(result), structuredContent: { learning: navigation.learning.get(threadId) } };
+      return { text: [text(result).text, ...(learned ? [learned.text] : [])].join('\n'), structuredContent: { ...(learned?.structuredContent ?? {}), learning: navigation.learning.get(threadId) } };
     },
 
     async emulator_key(threadId, { key }) {
@@ -773,8 +864,9 @@ export async function startDaemon({
     async emulator_open(threadId, { url, packageName, component }) {
       const device = deviceFor(threadId, requireLease(threadId).serial);
       const output = await device.open({ url, packageName, component });
-      try { await learnNavigation(threadId, device, { action: 'whereami' }, { packageName: packageName || component?.split('/')[0] }); } catch {}
-      return { ...text(output || 'Opened.'), structuredContent: { learning: navigation.learning.get(threadId) } };
+      let learned;
+      try { learned = await learnNavigation(threadId, device, { action: 'whereami' }, { packageName: packageName || component?.split('/')[0] }); } catch {}
+      return { text: [output || 'Opened.', ...(learned ? [learned.text] : [])].join('\n'), structuredContent: { ...(learned?.structuredContent ?? {}), learning: navigation.learning.get(threadId) } };
     },
 
     async emulator_settings(threadId, changes) {
@@ -944,12 +1036,13 @@ export async function startDaemon({
 
   leases.on('change', (threadId) => {
     const lease = leases.get(threadId);
-    if (!lease) {
+    if (!lease || lease.state !== 'ready') {
       invalidatePlace(threadId);
       recorders.forEach(recorder => recorder.discardThread(threadId));
       inputConnections.get(threadId)?.stop();
       stopMirror(threadId);
       for (const viewer of logcats.get(threadId)?.subscribers ?? []) unsubscribeLogcat(threadId, viewer);
+      if (!lease) for (const viewer of viewers.get(threadId) ?? []) viewer.close();
     }
     pushStatus(threadId);
     if (lease?.state === 'ready' && viewers.get(threadId)?.size) attachViewers(threadId);
@@ -987,6 +1080,31 @@ export async function startDaemon({
   }
 
   const paneActions = {
+    emulator_devices: threadId => tools.emulator_devices(threadId),
+    emulator_pin: (threadId, args) => tools.emulator_pin(threadId, args),
+    async emulator_transfer(threadId, { requestId, confirmed } = {}) {
+      if (confirmed !== true) throw new Error('Confirm moving the device from its current chat before continuing.');
+      const request = pins.requests.get(requestId);
+      if (!request || request.to !== threadId) throw new Error('Select the connected device again to request a move.');
+      const id = request.id;
+      if (transferring.has(id) || activeOperations.has(id) || navigationRuns.has(id) || typing.has(id) || isRecording(leases.get(id)?.serial)) throw new Error('The device is busy in its current chat. Finish its operation or recording before moving it.');
+      transferring.add(id);
+      try {
+        const device = (await connectedDevices.list({ fresh: true })).find(device => device.serial === request.serial);
+        // No new work can enter this pin while discovery and transfer complete.
+        for (const viewer of viewers.get(id) ?? []) viewer.close();
+        stopMirror(id);
+        inputConnections.get(id)?.stop();
+        inputConnections.delete(id);
+        invalidatePlace(id);
+        navigation.apps.delete(id);
+        navigation.learning.delete(id);
+        const moved = pins.transfer(threadId, requestId, device);
+        pushWorkspace(moved.from);
+        pushWorkspace(threadId);
+        return deviceInventory(threadId);
+      } finally { transferring.delete(id); }
+    },
     emulator_navigate: (threadId, args) => tools.emulator_navigate(threadId, args),
     emulator_start: (threadId, args) => tools.emulator_start(threadId, args),
     emulator_stop: (threadId, args) => tools.emulator_stop(threadId, args),
@@ -1008,10 +1126,11 @@ export async function startDaemon({
       return { avd: lease.avd, serial: lease.serial, activity, image: { data: png.toString('base64'), mimeType: 'image/png' } };
     },
     manager_overview: () => managerOverview(),
-    async manager_stop(_threadId, { threadId }) {
-      if (!leases.get(threadId)) throw new Error('That emulator is no longer running.');
-      await cancelNavigation(threadId);
-      await leases.stop(threadId);
+    async manager_stop(_threadId, { threadId, deviceId }) {
+      const id = pins.resolve(threadId, deviceId);
+      if (activeOperations.has(id) || typing.has(id)) throw new Error('The device is busy. Finish its current operation before stopping or unpinning it.');
+      await cancelNavigation(id);
+      await tools.emulator_stop(id);
       return managerOverview();
     },
     async manager_delete(_threadId, args) {
@@ -1067,6 +1186,18 @@ export async function startDaemon({
 
   async function handleViewerMessage(threadId, viewer, message) {
     if (!message || typeof message !== 'object') return;
+    if (viewer.closed || transferring.has(threadId)) return;
+    if (viewer.workspace) {
+      if (message.t !== 'call') return;
+      return reply(viewer, message.id, () => {
+        assertPanelAction(threadId, message.tool);
+        const allowed = ['emulator_devices', 'emulator_start', 'emulator_create', 'emulator_pin', 'emulator_transfer', 'emulator_stop', 'emulator_delete_avd'];
+        if (!allowed.includes(message.tool)) throw new Error('Choose a pinned device before using its controls.');
+        if (message.tool === 'emulator_transfer') return paneActions.emulator_transfer(threadId, message.args);
+        if (message.tool === 'emulator_delete_avd') return paneActions.emulator_delete_avd(threadId, message.args);
+        return dispatchTool(threadId, message.tool, message.args ?? {});
+      });
+    }
     const mirror = mirrors.get(threadId)?.mirror;
     const size = mirror?.session;
     leases.touch(threadId);
@@ -1111,6 +1242,8 @@ export async function startDaemon({
         return reply(viewer, message.id, () => {
           if (!Object.hasOwn(paneActions, message.tool)) throw new Error(`Unsupported pane action ${message.tool}`);
           assertPanelAction(threadId, message.tool);
+          if (['emulator_start', 'emulator_create', 'emulator_pin', 'emulator_devices'].includes(message.tool)) return dispatchTool(pins.owner(threadId), message.tool, message.args ?? {});
+          if (message.tool === 'emulator_transfer') throw new Error('Confirm device moves in the device workspace.');
           return operation(threadId, () => paneActions[message.tool](threadId, message.args ?? {}), message.tool, message.args);
         });
       case 'upload':
@@ -1157,6 +1290,22 @@ export async function startDaemon({
     '/static/app.css': ['app.css', 'text/css'],
   };
 
+  const chatTools = new Set([...THREADLESS, 'emulator_panel', 'emulator_start', 'emulator_create', 'emulator_pin', 'emulator_devices', 'emulator_status', 'emulator_diagnostics', 'emulator_apk']);
+  async function dispatchTool(caller, tool, args = {}) {
+    if (chatTools.has(tool)) return tools[tool](caller, args);
+    const id = pins.resolve(caller, args.deviceId, { allowEmpty: true });
+    const { deviceId, ...options } = args;
+    return operation(id, async () => {
+      if (leases.get(id)?.kind === 'physical') {
+        const state = (await connectedDevices.list()).find(device => device.serial === leases.get(id)?.serial)?.state ?? 'disconnected';
+        if (pins.resolve(caller, id) !== id) throw new Error('The device pin changed. Refresh the device list.');
+        const next = state === 'device' ? 'ready' : state;
+        if (leases.get(id)?.state !== next) leases.update(id, { state: next });
+      }
+      return tools[tool](id, options);
+    }, tool, options);
+  }
+
   async function handleRequest(req, res) {
     const url = new URL(req.url, 'http://127.0.0.1');
     if (!validHost(req)) return sendJson(res, 403, { error: 'Invalid host' });
@@ -1192,7 +1341,8 @@ export async function startDaemon({
 
     if (req.method === 'GET' && url.pathname.startsWith('/t/')) {
       const threadId = decodeURIComponent(url.pathname.slice(3));
-      if (!matchesKey(url.searchParams.get('k'), channelKey(threadId))) return sendJson(res, 401, { error: 'Unauthorized' });
+      const workspace = url.searchParams.get('workspace') === '1';
+      if (!matchesKey(url.searchParams.get('k'), channelKey(threadId, workspace))) return sendJson(res, 401, { error: 'Unauthorized' });
       res.writeHead(200, {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
@@ -1210,9 +1360,7 @@ export async function startDaemon({
         if (!Object.hasOwn(tools, tool)) throw new Error(`Unknown tool ${tool}`);
         if (!threadId && !THREADLESS.has(tool)) throw new Error('Missing thread identity.');
         if (threadId && tool !== 'emulator_diagnostics') leases.touch(threadId);
-        return sendJson(res, 200, { ok: true, result: await (['emulator_stream', 'emulator_status', 'emulator_diagnostics'].includes(tool)
-          ? tools[tool](threadId ?? '', args ?? {})
-          : operation(threadId, () => tools[tool](threadId ?? '', args ?? {}), tool, args)) });
+        return sendJson(res, 200, { ok: true, result: await dispatchTool(threadId ?? '', tool, args ?? {}) });
       } catch (error) {
         return sendJson(res, 200, { ok: false, error: error.message, errorCode: errorDetails(error).code });
       }
@@ -1230,12 +1378,14 @@ export async function startDaemon({
   server.on('upgrade', (req, socket) => {
     const url = new URL(req.url, 'http://127.0.0.1');
     const threadId = url.searchParams.get('thread');
-    if (!validHost(req) || !threadId || !matchesKey(url.searchParams.get('k'), channelKey(threadId)) || url.pathname !== '/ws') {
+    const workspace = url.searchParams.get('workspace') === '1';
+    if (!validHost(req) || !threadId || !matchesKey(url.searchParams.get('k'), channelKey(threadId, workspace)) || url.pathname !== '/ws') {
       socket.end('HTTP/1.1 401 Unauthorized\r\n\r\n');
       return;
     }
     const viewer = upgrade(req, socket);
     if (!viewer) return;
+    viewer.workspace = workspace;
     viewer.on('message', (raw, binary) => {
       if (binary) return;
       let message;
@@ -1251,6 +1401,13 @@ export async function startDaemon({
 
   // Registers a pane viewer (WebSocket or bridge), sends it the current status, and joins it to the mirror.
   function addViewer(threadId, viewer) {
+    if (viewer.workspace) {
+      if (!workspaceViewers.has(threadId)) workspaceViewers.set(threadId, new Set());
+      workspaceViewers.get(threadId).add(viewer);
+      viewer.on('close', () => { workspaceViewers.get(threadId)?.delete(viewer); if (!workspaceViewers.get(threadId)?.size) workspaceViewers.delete(threadId); });
+      pushWorkspace(threadId);
+      return;
+    }
     if (!viewers.has(threadId)) viewers.set(threadId, new Set());
     viewers.get(threadId).add(viewer);
     viewer.on('keyframe', (reason) => mirrors.get(threadId)?.mirror.requestKeyFrame(`bridge backlog: ${reason}`));
@@ -1261,6 +1418,7 @@ export async function startDaemon({
 
   // Bridge viewers have no socket to close; drop the ones whose panel stopped polling.
   const bridgeSweep = setInterval(() => {
+    for (const threadId of workspaceViewers.keys()) pushWorkspace(threadId);
     for (const [id, { viewer }] of bridges) {
       const idleMs = Date.now() - viewer.lastSeen;
       if (!viewer.polling && idleMs > BRIDGE_IDLE_MS) viewer.close();
@@ -1288,6 +1446,7 @@ export async function startDaemon({
     clearInterval(leaseSweep);
     stopAppearance?.();
     for (const set of viewers.values()) for (const viewer of set) viewer.close();
+    for (const set of workspaceViewers.values()) for (const viewer of set) viewer.close();
     for (const connection of inputConnections.values()) connection.stop();
     for (const threadId of mirrors.keys()) stopMirror(threadId);
     for (const threadId of Object.keys(leases.leases)) recorders.forEach(recorder => recorder.discardThread(threadId));

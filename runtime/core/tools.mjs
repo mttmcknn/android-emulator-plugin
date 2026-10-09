@@ -42,14 +42,24 @@ const fileInput = obj({ name: { type: 'string' }, resourceUri: { type: 'string' 
 
 export const TOOLS = [
   {
+    name: 'emulator_devices',
+    description: 'List devices pinned to this chat and connected Android devices available to pin. Use the returned device ID on every device action when more than one is pinned. Unauthorized devices require allowing USB debugging on the phone.',
+    inputSchema: obj({}), annotations: { title: 'List devices', ...readOnly }, icons: iconFor('phone'),
+  },
+  {
+    name: 'emulator_pin', title: 'Android Emulator',
+    description: 'Pin a connected Android device to this chat and open its live panel. Supply a serial from emulator_devices. A device already pinned elsewhere requires the user to confirm moving it in the panel; agents cannot confirm the move. Unpin physical devices with emulator_stop; this never shuts down the phone.',
+    inputSchema: obj({ serial: { type: 'string' } }, ['serial']), annotations: { title: 'Pin device', ...action }, icons: iconFor('phone'),
+  },
+  {
     name: 'emulator_navigate',
-    description: "Navigate this chat's app using automatically remembered screens and routes. Ordinary app opens, observations, taps, directional swipes and Back actions prepare and learn the map automatically. status reads saved metadata without observing the device; whereami locates and remembers a screen; go replays a saved route with optional expected selectors. Missing navigation dependencies are prepared locally on first use. Maps are local to this host/project/app unless an existing matching project map is present. Inspect every returned status; blocked/action_failed are not success. Never retry a lost or failed action automatically. cancel stops navigation before releasing input; completed actions are not undone. init and label are optional advanced overrides, not required setup.",
+    description: "Navigate this chat's app using automatically remembered screens and routes. Ordinary app opens, observations, taps, directional swipes and Back actions prepare and learn the map automatically. status reads saved metadata without observing the device; whereami locates and remembers a screen; go replays a saved route with optional expected selectors. When currentPlace.needsLabel is true, inspect the screen and call whereami with a short descriptive label before leaving it. This also renames existing numbered screens while preserving their IDs and routes. Never ask the user to name screens. Missing navigation dependencies are prepared locally on first use. Maps are local to this host/project/app unless an existing matching project map is present. Inspect every returned status; blocked/action_failed are not success. Never retry a lost or failed action automatically. cancel stops navigation before releasing input; completed actions are not undone. init is an optional advanced override, not required setup.",
     inputSchema: obj({
       action: { type: 'string', enum: ['status', 'init', 'doctor', 'whereami', 'layout', 'go', 'tap', 'scroll', 'back', 'cancel'] },
       packageName: { type: 'string', description: 'Required only for advanced init; ordinary actions select the foreground app automatically.' },
       target: { type: 'string', description: 'Place ID or slug from status; required for go.' },
       selector: { type: 'string', description: 'Required for tap, e.g. text=Settings, resource_id=com.example:id/settings, content_desc=Settings.' },
-      label: { type: 'string', description: 'Name a freshly inspected screen (whereami), or a verified tap destination (tap).' },
+      label: { type: 'string', minLength: 1, maxLength: 120, description: 'Short screen purpose from fresh UI evidence, e.g. Settings or Sign in. Use whereami to replace numbered placeholders. Preserve useful existing names; omit personal data, record names and entered text. If label_mismatch is returned, inspect and choose a distinct descriptive name; do not merge screens.' },
       reason: { type: 'string', description: 'Optional tap intent for the saved route.' },
       direction: { type: 'string', enum: ['up', 'down', 'left', 'right'], description: 'Required for scroll. Minimap content direction; down reveals content below.' },
       expect: { type: 'array', items: { type: 'string' }, maxItems: 8, description: 'go must verify all selectors at the destination. Use for specific item or state checks.' },
@@ -62,22 +72,22 @@ export const TOOLS = [
     description: "Inspect available implementations, select backends for only this chat, or read content-free performance metrics. Defaults preserve the current behavior. Finish active actions/recordings before selecting. Changing the connection backend reconnects this chat’s display. Optional dependencies must be installed separately; failures never silently fall back. Metrics are helper-side, not panel render latency.",
     inputSchema: obj({ action: { type: 'string', enum: ['list', 'select', 'metrics'], description: 'Default list.' },
       set: obj(Object.fromEntries(['capture', 'device', 'connection', 'recording', 'navigation'].map(name => [name, { type: 'string', description: 'Implementation ID from list.' }]))) }),
-    annotations: { title: 'Emulator backends', ...action },
+    annotations: { title: 'Manage device tools', ...action },
     icons: iconFor('sliders'),
   },
   {
     name: 'emulator_status',
     description:
-      "Show this chat's Android emulator, available virtual devices, and devices created for this chat.",
-    inputSchema: obj({}),
-    annotations: { title: 'Emulator status', ...readOnly },
+      "Show this chat's pinned Android devices, connected phones, and available virtual devices. Pass deviceId for one device's stream and foldable details.",
+    inputSchema: obj({ deviceId: { type: 'string', minLength: 1, description: 'Optional device ID from emulator_devices for detailed status.' } }),
+    annotations: { title: 'Check device status', ...readOnly },
     icons: iconFor('phone'),
   },
   {
     name: 'emulator_diagnostics',
     description: "Diagnose this chat's emulator or panel without starting or restarting anything. Returns plugin/helper versions, SDK availability, device process and stream state, stable diagnostic codes, and host diagnostics when the integration supports them. Excludes access keys, raw logs, and device content. Use before retrying a failed action or restarting the emulator; historical host events may be unrelated.",
     inputSchema: obj({}),
-    annotations: { title: 'Emulator diagnostics', ...readOnly },
+    annotations: { title: 'Diagnose device issues', ...readOnly },
     icons: iconFor('terminal'),
   },
   {
@@ -85,7 +95,7 @@ export const TOOLS = [
     title: 'Android Emulator',
     description: "Show this chat's live Android emulator. Reuse the existing panel during testing; call this only when the panel is closed or the user asks to show it.",
     inputSchema: obj({}),
-    annotations: { title: 'Show Android Emulator', ...readOnly },
+    annotations: { title: 'Show device panel', ...readOnly },
     icons: iconFor('android'),
     _meta: {
       ui: { resourceUri: PANEL_URI },
@@ -96,7 +106,7 @@ export const TOOLS = [
     title: 'Android Emulators',
     description: 'View running Android emulators and virtual devices stored on this computer.',
     inputSchema: obj({}),
-    annotations: { title: 'Android Emulators', ...readOnly },
+    annotations: { title: 'Manage Android devices', ...readOnly },
     icons: iconFor('devices'),
     _meta: { ...appOnly, ui: { ...appOnly.ui, resourceUri: MANAGER_URI } },
   },
@@ -111,6 +121,7 @@ export const TOOLS = [
   },
   {
     name: 'emulator_create',
+    title: 'Android Emulator',
     description:
       "Create an Android virtual device from a device profile and installed system image. It starts in this chat by default and is removed when the chat is archived unless you keep it.",
     inputSchema: obj(
@@ -128,12 +139,15 @@ export const TOOLS = [
   },
   {
     name: 'emulator_start',
+    title: 'Android Emulator',
     description:
       "Start this chat's Android emulator. If the selected virtual device is already running elsewhere, a temporary read-only copy starts instead.",
     inputSchema: obj({
       avd: { type: 'string', description: 'AVD name from emulator_status. Omit for the default.' },
       readOnly: { type: 'boolean', description: 'Force an ephemeral instance that does not save AVD state.' },
       coldBoot: { type: 'boolean', description: 'Skip the Quick Boot snapshot and cold boot.' },
+      deviceId: { type: 'string', description: 'Reuse a specific emulator pinned to this chat.' },
+      newInstance: { type: 'boolean', description: 'Start an additional emulator, including another instance of the same AVD, for comparison.' },
     }),
     annotations: { title: 'Start emulator', ...action },
     icons: iconFor('start'),
@@ -143,21 +157,21 @@ export const TOOLS = [
     description:
       "Stop this chat's Android emulator. You can also delete a virtual device created for this chat.",
     inputSchema: obj({ deleteDevice: { type: 'boolean', description: 'Also delete a virtual device created for this chat.' } }),
-    annotations: { title: 'Stop emulator', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    annotations: { title: 'Stop or unpin device', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     icons: iconFor('stop'),
   },
   {
     name: 'emulator_screenshot',
     description: "Capture this chat's Android emulator screen as an image. Set save to keep a reusable capture for clipboard or chat sharing; ordinary screenshots are not saved.",
     inputSchema: obj({ save: { type: 'boolean', description: 'Save a reusable capture and return its ID. Default false.' } }),
-    annotations: { title: 'Screenshot', ...readOnly },
+    annotations: { title: 'Take screenshot', ...readOnly },
     icons: iconFor('camera'),
   },
   {
     name: 'emulator_capture',
     description: "List this chat's recent screenshots and recordings, copy a capture to the macOS clipboard, or inspect it. PNGs copy as images; MP4s copy as files for apps that accept file paste. Context returns a screenshot or up to four timestamped video frames plus the saved video path (requires FFmpeg). Video frames are samples, not the full recording. Capture IDs come from emulator_screenshot, emulator_record, or list. Never acts on another chat's captures.",
     inputSchema: obj({ action: { type: 'string', enum: ['list', 'copy', 'context'] }, captureId: { type: 'string', description: 'Required for copy/context.' } }, ['action']),
-    annotations: { title: 'Share emulator capture', ...action },
+    annotations: { title: 'View or copy captures', ...action },
     icons: iconFor('camera'),
   },
   {
@@ -165,7 +179,7 @@ export const TOOLS = [
     description:
       'List meaningful on-screen UI elements from the accessibility hierarchy with text, content description, resource id, center coordinates, and state. Prefer this over screenshots for finding tap targets.',
     inputSchema: obj({ query: { type: 'string', description: 'Optional case-insensitive filter on text, description, or resource id.' } }),
-    annotations: { title: 'Read screen', ...readOnly },
+    annotations: { title: 'Read screen elements', ...readOnly },
     icons: iconFor('tree'),
   },
   {
@@ -194,7 +208,7 @@ export const TOOLS = [
       resourceId: { type: 'string', description: 'View id, with or without the package prefix.' },
       durationMs: { type: 'integer', minimum: 1, maximum: 10_000, description: 'Long-press duration; maximum 10000.' },
     }),
-    annotations: { title: 'Tap', ...action },
+    annotations: { title: 'Tap screen', ...action },
     icons: iconFor('tap'),
   },
   {
@@ -208,7 +222,7 @@ export const TOOLS = [
       y2: { type: 'number' },
       durationMs: { type: 'number', description: 'Default 300.' },
     }),
-    annotations: { title: 'Swipe', ...action },
+    annotations: { title: 'Swipe screen', ...action },
     icons: iconFor('swipe'),
   },
   {
@@ -230,9 +244,9 @@ export const TOOLS = [
   {
     name: 'emulator_observe',
     description:
-      'Read the screenshot, meaningful UI elements, and foreground app concurrently. This is not an atomic snapshot; partial read errors are returned explicitly.',
+      'Read the screenshot, meaningful UI elements, and foreground app concurrently. This is not an atomic snapshot; partial read errors are returned explicitly. If navigation.currentPlace.needsLabel is true, use this observation to give the screen a short descriptive name with emulator_navigate (whereami + label) before navigating away.',
     inputSchema: obj({}),
-    annotations: { title: 'Observe screen', ...readOnly },
+    annotations: { title: 'Inspect screen', ...readOnly },
     icons: iconFor('camera'),
   },
   {
@@ -265,14 +279,14 @@ export const TOOLS = [
       packageName: { type: 'string', description: 'Qualified Android package name, for example com.example.app.' },
       permission: { type: 'string', description: 'Required only for grant_permission or revoke_permission, for example android.permission.CAMERA.' },
     }, ['action', 'packageName']),
-    annotations: { title: 'Control app', ...action },
+    annotations: { title: 'Manage app', ...action },
     icons: iconFor('open'),
   },
   {
     name: 'emulator_key',
     description: 'Press a key: BACK, HOME, APP_SWITCH, ENTER, DEL, TAB, ESCAPE, DPAD_UP/DOWN/LEFT/RIGHT, POWER, VOLUME_UP, VOLUME_DOWN, MENU, or a numeric Android keycode.',
     inputSchema: obj({ key: { type: ['string', 'integer'] } }, ['key']),
-    annotations: { title: 'Press key', ...action },
+    annotations: { title: 'Press device key', ...action },
     icons: iconFor('key'),
   },
   {
@@ -285,7 +299,7 @@ export const TOOLS = [
       },
       ['apkPaths'],
     ),
-    annotations: { title: 'Install APK', ...action },
+    annotations: { title: 'Install app', ...action },
     icons: iconFor('install'),
   },
   {
@@ -306,7 +320,7 @@ export const TOOLS = [
       rotate: { type: 'string', enum: ['left', 'right'] },
       posture: { type: 'string', enum: ['folded', 'half-folded', 'unfolded'], description: 'Foldable AVDs only. half-folded simulates a partially open hinge.' },
     }),
-    annotations: { title: 'Device conditions', ...action },
+    annotations: { title: 'Change device settings', ...action },
     icons: iconFor('sliders'),
   },
   {
@@ -320,7 +334,7 @@ export const TOOLS = [
     name: 'emulator_snapshot',
     description: "List, save, load, or delete Quick Boot snapshots for this chat's Android emulator.",
     inputSchema: obj({ action: { type: 'string', enum: ['list', 'save', 'load', 'delete'] }, name: { type: 'string' } }, ['action']),
-    annotations: { title: 'Snapshots', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    annotations: { title: 'Manage emulator snapshots', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     icons: iconFor('snapshot'),
   },
   {
@@ -328,7 +342,7 @@ export const TOOLS = [
     description:
       "Run an adb command against this chat's Android emulator. Output is limited to 20,000 characters.",
     inputSchema: obj({ args: { type: 'array', items: { type: 'string' }, minItems: 1 }, timeoutMs: { type: 'number', description: 'Default 60000.' } }, ['args']),
-    annotations: { title: 'Run adb', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    annotations: { title: 'Run device command', readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     icons: iconFor('terminal'),
   },
   {
@@ -348,7 +362,7 @@ export const TOOLS = [
       properties: { schema: { type: 'object' }, values: { type: 'object' }, layout: { type: 'array', items: { type: 'object' } } },
       required: ['schema', 'values'],
     },
-    annotations: { title: 'Read settings', ...readOnly },
+    annotations: { title: 'Read plugin settings', ...readOnly },
     _meta: appOnly,
   },
   {
@@ -371,7 +385,7 @@ export const TOOLS = [
       ['set'],
     ),
     outputSchema: { type: 'object', properties: { values: { type: 'object' } }, required: ['values'] },
-    annotations: { title: 'Update settings', ...action },
+    annotations: { title: 'Update plugin settings', ...action },
     _meta: appOnly,
   },
   {
@@ -384,20 +398,26 @@ export const TOOLS = [
         session: { type: 'string', maxLength: 64 },
         send: { type: 'array', items: { type: 'object' } },
         wait: { type: 'boolean' },
+        workspace: { type: 'boolean' },
       },
       ['thread', 'key', 'session'],
     ),
-    annotations: { title: 'Stream emulator panel', ...action },
+    annotations: { title: 'Stream device display', ...action },
     icons: iconFor('phone'),
     _meta: appOnly,
   },
-];
+].map(tool => {
+  tool = { ...tool, title: tool.title ?? tool.annotations.title };
+  const scoped = ['emulator_navigate', 'emulator_backends', 'emulator_stop', 'emulator_screenshot', 'emulator_capture', 'emulator_record', 'emulator_snapshot', 'emulator_observe', 'emulator_ui_tree', 'emulator_tap', 'emulator_swipe', 'emulator_key', 'emulator_type', 'emulator_wait_for', 'emulator_scroll_to', 'emulator_app', 'emulator_install', 'emulator_open', 'emulator_settings', 'emulator_adb', 'emulator_apk', 'emulator_capture_selection'];
+  return scoped.includes(tool.name) ? { ...tool, inputSchema: { ...tool.inputSchema, properties: { ...tool.inputSchema.properties, deviceId: { type: 'string', description: 'Device ID from emulator_devices. Required when this chat has multiple pinned devices; cannot target another chat’s device.' } } } } : tool;
+});
 
 // Callable without a calling session (settings page, sidebar, and the panel transport, which carries its own key).
 export const THREADLESS = new Set(['settings_read', 'settings_update', 'emulator_manager', 'emulator_stream']);
 
 export const EMULATOR_INSTRUCTIONS =
-  "Each chat gets its own Android emulator. These tools only ever act on the calling chat's emulator. " +
-  'Start with emulator_status, then emulator_start (or emulator_create when no AVD fits), then emulator_panel only if the device panel is not already open or the user asks to show it. Reuse the existing panel during testing. ' +
+  'A chat can pin multiple Android emulators and connected devices. Each device belongs exclusively to one chat. List emulator_devices and pass deviceId on actions when several are pinned; never guess the target. Use emulator_pin for connected phones; a move from another chat requires user confirmation in the panel. emulator_stop releases a physical pin without shutting down the phone. ' +
+  'Start with emulator_status, then emulator_start (or emulator_create when no AVD fits). Successful startup returns the device panel automatically in supported hosts; do not follow it with emulator_panel. Use emulator_panel to reopen a closed panel or when the user asks to show it. Reuse the existing panel during testing. ' +
   'Use emulator_observe for the screen, elements, and foreground app together; emulator_ui_tree for lighter target lookup. Use emulator_scroll_to for off-screen targets and emulator_type for verified Unicode text entry. ' +
+  'Name screens as you inspect them: when navigation reports currentPlace.needsLabel, call emulator_navigate with action whereami and a short descriptive label based on fresh UI evidence. Replace numbered placeholders on revisit, preserve useful names, omit personal data, and never ask the user to manage screen names. ' +
   'When the panel or tools fail, use emulator_diagnostics before restarting anything. It works without a running helper and returns safe, chat-scoped diagnostics.';

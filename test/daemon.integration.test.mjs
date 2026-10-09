@@ -107,7 +107,7 @@ async function streamResult(port, token, threadId, args, id) {
     const result = resultMessage(response.result.structuredContent.messages, id);
     if (result) return result;
     // A just-opened pane can drain its asynchronous status update before its action reply arrives.
-    next = { thread: args.thread, key: args.key, session: args.session, wait: true };
+    next = { thread: args.thread, key: args.key, workspace: args.workspace, session: args.session, wait: true };
   }
   throw new Error(`No stream result for ${id}.`);
 }
@@ -224,8 +224,7 @@ if (process.argv[2] === '-list-avds') {
   assert.equal((await fetch(`http://127.0.0.1:${port}/recordings/b.mp4?k=${recordingAKey}`)).status, 401);
 
   const blocked = await streamResult(port, token, 'thread-a', {
-    thread: 'thread-a',
-    key: panelAKey,
+    ...panelA.channel,
     session: 'normal-pane',
     send: [{ t: 'call', id: 'blocked-manager', tool: 'manager_overview' }],
   }, 'blocked-manager');
@@ -277,8 +276,7 @@ if (process.argv[2] === '-list-avds') {
   assert.deepEqual(idleStatus.display, { viewers: 0, streaming: false });
 
   const mismatch = await api(port, token, 'thread-b', 'emulator_stream', {
-    thread: 'thread-a',
-    key: panelAKey,
+    ...panelA.channel,
     session: 'mismatched-caller',
   });
   assert.equal(mismatch.ok, false);

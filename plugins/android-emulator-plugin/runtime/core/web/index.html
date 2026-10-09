@@ -8,6 +8,38 @@
     <link rel="stylesheet" href="/static/app.css" />
   </head>
   <body>
+    <!-- All devices pinned to this chat live inside this panel. -->
+    <div id="workspace-view" class="view" hidden>
+      <header class="bar workspace-bar">
+        <button type="button" class="device-button" id="workspace-device-button" aria-haspopup="menu" aria-expanded="false">
+          <span class="name">Devices</span><span id="workspace-count" class="meta"></span>
+          <svg class="chevron" viewBox="0 0 16 16"><path d="m4.5 6.5 3.5 3.5 3.5-3.5" /></svg>
+        </button>
+        <div class="bar-end">
+          <button type="button" class="button" id="workspace-refresh" aria-label="Refresh connected devices">Refresh</button>
+          <button type="button" class="button" id="workspace-compare" aria-pressed="false" disabled>Compare</button>
+          <button type="button" class="button" id="workspace-single" aria-pressed="true">Single view</button>
+        </div>
+        <div id="workspace-menu" class="menu" role="menu" aria-label="Devices" hidden></div>
+      </header>
+      <div id="workspace-tabs" role="tablist" aria-label="Pinned devices"></div>
+      <div id="workspace-main">
+        <div id="workspace-frames"></div>
+        <div id="workspace-launcher" hidden>
+          <button type="button" class="button" id="workspace-launcher-close" hidden>Back to devices</button>
+        </div>
+      </div>
+      <p id="workspace-feedback" class="muted" role="status" aria-live="polite"></p>
+    </div>
+
+    <dialog id="transfer-dialog">
+      <form method="dialog">
+        <h2>Move device to this chat?</h2>
+        <p id="transfer-description"></p>
+        <div class="actions"><button class="button" value="cancel" autofocus>Cancel</button><button class="button primary" value="move">Move device</button></div>
+      </form>
+    </dialog>
+
     <!-- Device view -->
     <div id="device-view" class="view">
       <header class="bar">
@@ -64,7 +96,11 @@
             <div id="launcher" hidden>
               <div class="launcher-head">
                 <h1>Start a device</h1>
-                <p class="muted">Start an Android device for this chat.</p>
+                <p class="muted">Start a virtual device or pin a connected device to this chat.</p>
+              </div>
+              <div class="group" id="connected-device-group" hidden>
+                <div class="label">Connected devices</div>
+                <ul id="connected-device-list" class="list"></ul>
               </div>
               <div class="group">
                 <div class="label">Virtual devices</div>
@@ -107,7 +143,7 @@
                   </label>
                 </div>
               </div>
-              <div class="group">
+              <div class="group" data-emulator-only>
                 <div class="label">Snapshots</div>
                 <ul id="snapshot-list" class="list"></ul>
                 <form id="snapshot-form" class="inline-form">
@@ -115,7 +151,7 @@
                   <button type="submit" class="button">Save</button>
                 </form>
               </div>
-              <div class="group">
+              <div class="group" data-emulator-only>
                 <div class="label">Location</div>
                 <div class="panel">
                   <label class="row"><span>Latitude</span><input id="lat" type="number" step="any" value="40.7411" /></label>
@@ -123,7 +159,7 @@
                 </div>
                 <button type="button" class="button" id="set-location">Set location</button>
               </div>
-              <div class="group">
+              <div class="group" data-emulator-only>
                 <div class="label">Battery</div>
                 <div class="panel">
                   <label class="row"><span>Level</span><span class="range"><input id="battery" type="range" min="0" max="100" value="100" /><output id="battery-value" class="mono">100%</output></span></label>
@@ -132,7 +168,7 @@
                 <button type="button" class="button" id="set-battery">Apply battery</button>
               </div>
               <div class="group">
-                <div class="label">Emulator</div>
+                <div class="label">Device</div>
                 <p id="details" class="muted"></p>
                 <div class="actions">
                   <button type="button" class="button" id="stop">Stop</button>
@@ -142,7 +178,7 @@
               <div class="group">
                 <div class="label">Shortcuts</div>
                 <dl class="shortcuts">
-                  <dt>⌘←&thinsp;/&thinsp;⌘→</dt><dd>Rotate</dd>
+                  <dt data-emulator-only>⌘←&thinsp;/&thinsp;⌘→</dt><dd data-emulator-only>Rotate</dd>
                   <dt>⌘⌫</dt><dd>Back</dd>
                   <dt>⇧⌘H</dt><dd>Home</dd>
                   <dt>⌘O</dt><dd>Overview</dd>

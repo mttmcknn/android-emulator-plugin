@@ -5,9 +5,10 @@ import { RUNTIME_VERSION } from '../../core/version.mjs';
 
 export const PLUGIN_VERSION = RUNTIME_VERSION;
 
-// The helper uses a separate version epoch to preserve client upgrade ordering.
+// Epoch 2 introduces device-scoped sessions. Upgrade helpers already running the
+// same dated plugin version, while older clients keep using the newer helper.
 export function helperVersion(version) {
-  return version.replace(/^\d+/, (major) => String(Number(major) + 1));
+  return version.replace(/^\d+/, (major) => String(Number(major) + 2));
 }
 export const HELPER_VERSION = helperVersion(PLUGIN_VERSION);
 

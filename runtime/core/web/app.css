@@ -242,3 +242,42 @@ button.primary.android { background: var(--android); color: #0b2e1a; }
 
 /* Outside the scrolling rail so hover labels cannot be clipped by its viewport. */
 #tooltip { position: fixed; z-index: 100; max-width: calc(100vw - 16px); padding: 7px 10px; border-radius: 8px; background: var(--color-background-inverse, var(--text)); color: var(--color-text-inverse, var(--bg)); box-shadow: var(--shadow); font-size: 12px; line-height: 16px; pointer-events: none; }
+
+/* Device workspace: tabs are internal to the panel; comparison keeps two fixed streams. */
+.workspace-bar { height: auto; min-height: 40px; flex-wrap: wrap; padding: 5px 6px; }
+.workspace-bar .bar-end { gap: 5px; flex-wrap: wrap; }
+.workspace-bar .button[aria-pressed="true"] { background: var(--pressed); border-color: var(--accent); }
+#workspace-tabs { display: flex; flex: none; overflow-x: auto; border-bottom: 1px solid var(--line); min-height: 35px; }
+.device-tab { flex: none; display: flex; max-width: 260px; align-items: center; border-right: 1px solid var(--line); }
+.device-tab button { border: 0; background: none; color: var(--text-2); }
+.device-tab [role="tab"] { min-width: 0; padding: 9px 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.device-tab [role="tab"][aria-selected="true"] { color: var(--text); box-shadow: inset 0 -2px var(--accent); }
+.device-tab.shown { background: var(--hover); }
+.device-tab .tab-close { padding: 8px; font-size: 16px; }
+.device-tab.drop-target { outline: 2px solid var(--accent); outline-offset: -2px; }
+.device-tab button:focus-visible, .device-button:focus-visible, .menu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+#workspace-main { flex: 1; position: relative; min-height: 0; }
+#workspace-frames { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); }
+#workspace-frames.comparing { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.device-frame { display: block; border: 0; width: 100%; height: 100%; min-width: 0; background: var(--bg); }
+#workspace-frames.comparing .device-frame + .device-frame { border-left: 1px solid var(--line-strong); }
+#workspace-launcher { position: absolute; inset: 0; background: var(--bg); overflow-y: auto; }
+#workspace-launcher #launcher { position: static; width: min(520px, 100%); padding-top: 20px; }
+#workspace-launcher-close { margin: 12px 16px 0; }
+#workspace-main > #message { pointer-events: none; }
+#workspace-main > #message.stacked { pointer-events: auto; background: var(--bg); }
+#workspace-feedback { flex: none; padding: 5px 10px; border-top: 1px solid var(--line); font-size: 11px; }
+#workspace-feedback:empty { display: none; }
+.menu .menu-heading { padding: 7px 8px 3px; color: var(--text-3); font-size: 11px; }
+.menu button.device-menu-item { height: auto; min-height: 32px; display: grid; gap: 2px; padding: 6px 8px; }
+.device-menu-item .meta { font-size: 11px; overflow-wrap: anywhere; }
+.connected-device-detail { flex: 1; min-width: 0; padding: 8px 0; overflow-wrap: anywhere; }
+.connected-device-detail .meta { display: block; font-size: 11px; }
+body[data-device-frame] .device-button { cursor: default; pointer-events: none; }
+body[data-device-frame] .device-button .chevron { display: none; }
+body[data-device-frame].inline { height: 100%; }
+@media (max-width: 480px) {
+  #workspace-frames.comparing { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  #workspace-frames.comparing .device-frame + .device-frame { border-left: 0; border-top: 1px solid var(--line-strong); }
+  .workspace-bar .button { padding: 0 8px; }
+}

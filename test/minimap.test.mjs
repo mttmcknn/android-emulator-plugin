@@ -27,7 +27,7 @@ test('Minimap resolves the trusted project at Git boundaries and exposes only gr
   const map = readMinimap(nested);
   assert.equal(map.edges[0].requiresHistory, true);
   assert.equal(map.packageName, 'com.example.test');
-  assert.deepEqual(map.places, [{ id: 'p_home', label: 'Home', slug: 'home' }]);
+  assert.deepEqual(map.places, [{ id: 'p_home', label: 'Home', slug: 'home', needsLabel: false }]);
   assert.ok(!JSON.stringify(map).includes('privateScreenText'));
   fs.mkdirSync(path.join(nested, '.git'));
   assert.equal(minimapRoot(nested), nested);
@@ -96,6 +96,40 @@ test('cancellation kills an Android subprocess in its own process group before r
   } finally { watcher.close(); signal.abort(); }
 });
 
+test('revisited numbered screens request a name; a successful relabel returns refreshed metadata and keeps route IDs', async t => {
+  const root = directory(t); graph(root);
+  const file = path.join(root, '.minimap/graph/places/legacy.json');
+  const legacy = { schema_version: 'minimap.place.v1', id: 'p_screen_2', slug: 'screen-2', label: 'Screen 2' };
+  fs.writeFileSync(file, JSON.stringify(legacy));
+  const edgeFile = path.join(root, '.minimap/graph/edges/settings.json');
+  const edge = JSON.stringify({ schema_version: 'minimap.edge.v2', id: 'route', from: { id: 'p_home' }, to: { id: legacy.id }, recipe: [{ kind: 'tap', selector: 'text=Settings' }] });
+  fs.writeFileSync(edgeFile, edge);
+  const calls = []; let status = 'known';
+  const nav = createMinimapBackend({ environment: () => ({}), runCommand: async (_file, args) => {
+    calls.push(args);
+    if (args.includes('--label=Settings')) {
+      // Model Minimap's relabel contract: the ID and route files are retained.
+      fs.writeFileSync(file, JSON.stringify({ ...legacy, label: 'Settings', slug: 'settings' }));
+      return { code: 0, stdout: JSON.stringify({ status: 'ok', place: { id: legacy.id } }) };
+    }
+    return { code: 0, stdout: JSON.stringify({ status, place: { id: legacy.id } }) };
+  } }).create();
+  const locate = () => nav.execute({ cwd: root, serial: 'owned-A', action: 'whereami', automatic: true });
+  assert.equal((await locate()).currentPlace.needsLabel, true);
+  assert.equal(calls.length, 1, 'known placeholders must not trigger redundant observations');
+  const named = await nav.execute({ cwd: root, serial: 'owned-A', action: 'whereami', label: 'Settings' });
+  assert.deepEqual(calls[1], ['--serial', 'owned-A', 'whereami', '--fresh', '--label=Settings']);
+  assert.deepEqual(named.currentPlace, { id: legacy.id, slug: 'settings', label: 'Settings', needsLabel: false });
+  assert.equal((await locate()).currentPlace.needsLabel, false);
+  assert.equal(fs.readFileSync(edgeFile, 'utf8'), edge);
+  assert.equal(nav.status(root).places.length, 2, 'renaming must not duplicate the screen');
+  for (status of ['ambiguous', 'blocked_by_overlay', 'label_mismatch', 'action_failed']) {
+    const blocked = await locate();
+    assert.equal(blocked.currentPlace, null, `${status} must not request a name for an unverified screen`);
+    assert.equal(blocked.currentPlaceId, null);
+  }
+});
+
 test('automatic naming handles pre-input and post-input needs_label without repeating a dispatched tap', async t => {
   const root = directory(t); graph(root);
   const calls = []; let attempts = 0, physicalTaps = 0;
@@ -117,6 +151,9 @@ test('automatic naming handles pre-input and post-input needs_label without repe
   } }).create();
   const result = await nav.execute({ cwd: root, packageName: 'com.example.test', serial: 'owned-A', action: 'tap', selector: 'text=Next', automatic: true });
   assert.equal(result.currentPlaceId, 'destination'); assert.equal(physicalTaps, 1); assert.equal(attempts, 2);
+  assert.equal(result.currentPlace.id, 'destination');
+  assert.equal(result.currentPlace.label, 'Screen 3');
+  assert.equal(result.currentPlace.needsLabel, true);
   assert.equal(new Set(calls.map(call => call.session)).size, 1);
   assert.equal(fs.existsSync(calls[0].session), false, 'pending recipes must not survive a separate raw/manual action');
   assert.deepEqual(nav.status(root).places.filter(p => p.id !== 'p_home').map(p => p.label).sort(), ['Screen 2', 'Screen 3']);

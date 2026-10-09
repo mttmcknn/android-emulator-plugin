@@ -60,3 +60,19 @@ test('readOnly false cannot create a second writer for an already leased AVD', a
   assert.equal(secondInstance.readOnly, true);
   assert.notEqual(secondInstance.serial, writer.serial);
 });
+
+test('physical pins survive idle cleanup and are released when their owner is archived', async () => {
+  const leases = manager();
+  leases.attach('phone-a', { serial: 'usb-a', label: 'Phone A' });
+  leases.attach('phone-b', { serial: 'usb-b', label: 'Phone B' });
+  for (const lease of Object.values(leases.leases)) lease.startedAt = '2000-01-01T00:00:00Z';
+  leases.readSessions = async ids => new Map([...ids].map(id => [id, { state: 'active' }]));
+  const options = { idleMs: 1, isWatched: () => false };
+  await leases.sweep(options);
+  assert.equal(Object.keys(leases.leases).length, 2);
+  leases.readSessions = async ids => new Map([...ids].map(id => [id, { state: id === 'phone-a' ? 'archived' : 'active' }]));
+  await leases.sweep(options);
+  assert.equal(leases.get('phone-a'), null);
+  assert.equal(leases.get('phone-b').serial, 'usb-b');
+  await leases.stop('phone-b');
+});

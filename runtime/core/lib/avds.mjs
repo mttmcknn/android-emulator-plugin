@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { sdk } from './sdk.mjs';
+import { sdk, requireEmulator } from './sdk.mjs';
 
 // Hardware profiles from the Android SDK device catalog (sdklib nexus.xml and devices.xml).
 export const PROFILES = [
@@ -111,6 +111,7 @@ export function avdPostures(name) {
 }
 
 export function createAvd({ profileId, imageId, name, existingNames }) {
+  requireEmulator();
   const profile = PROFILES.find((candidate) => candidate.id === profileId);
   if (!profile) throw new Error(`Unknown device profile "${profileId}". Use one of: ${PROFILES.map(({ id }) => id).join(', ')}.`);
   const images = systemImages();

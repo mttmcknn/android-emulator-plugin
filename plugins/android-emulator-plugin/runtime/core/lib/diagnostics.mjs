@@ -6,6 +6,7 @@ import { RUNTIME_VERSION } from '../version.mjs';
 const version = value => /^\d+\.\d+\.\d+$/.test(value ?? '') ? value : null;
 const count = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
 const bool = value => typeof value === 'boolean' ? value : null;
+const deviceSerial = value => typeof value === 'string' && value.length <= 255 && /^[A-Za-z0-9._:[\]-]+$/.test(value) ? value : null;
 const MAX_HELPER_BYTES = 64 * 1024;
 
 async function helperJson(response) {
@@ -21,32 +22,49 @@ async function helperJson(response) {
 
 export function leaseDiagnostics(lease) {
   if (!lease) return { state: 'unassigned' };
+  const kind = ['emulator', 'physical'].includes(lease.kind) ? lease.kind : /^emulator-\d+$/.test(lease.serial ?? '') ? 'emulator' : null;
   let processRunning = null;
-  if (Number.isSafeInteger(lease.pid) && lease.pid > 0) {
+  if (kind === 'emulator' && Number.isSafeInteger(lease.pid) && lease.pid > 0) {
     try { process.kill(lease.pid, 0); processRunning = true; }
     catch (error) { if (error.code === 'ESRCH') processRunning = false; }
   }
   return {
-    state: ['unassigned', 'ready', 'starting', 'booting', 'stopping', 'error'].includes(lease.state) ? lease.state : 'unknown',
-    serial: /^emulator-\d{4,5}$/.test(lease.serial ?? '') ? lease.serial : null,
+    kind,
+    state: ['unassigned', 'ready', 'starting', 'booting', 'stopping', 'error', 'disconnected', 'offline', 'unauthorized'].includes(lease.state) ? lease.state : 'unknown',
+    serial: deviceSerial(lease.serial),
     processRunning,
   };
 }
 
-function savedDevice(dir, threadId) {
-  if (!threadId) return { state: 'unknown', source: 'unavailable' };
+function readSavedMap(dir, name, key) {
   let fd;
   try {
-    fd = fs.openSync(path.join(dir, 'leases.json'), 'r');
+    fd = fs.openSync(path.join(dir, name), 'r');
     const buffer = Buffer.alloc(1024 * 1024 + 1);
     const bytes = fs.readSync(fd, buffer, 0, buffer.length, 0);
     if (bytes === buffer.length) throw new Error('State too large');
-    const saved = JSON.parse(buffer.toString('utf8', 0, bytes));
-    if (!saved.leases || typeof saved.leases !== 'object') throw new Error('Invalid state');
-    return { ...leaseDiagnostics(Object.hasOwn(saved.leases, threadId) ? saved.leases[threadId] : null), source: 'saved_state' };
+    const saved = JSON.parse(buffer.toString('utf8', 0, bytes))?.[key];
+    if (!saved || typeof saved !== 'object' || Array.isArray(saved)) throw new Error('Invalid state');
+    return saved;
+  } finally { if (fd !== undefined) fs.closeSync(fd); }
+}
+
+function savedDevice(dir, threadId) {
+  if (!threadId) return { state: 'unknown', source: 'unavailable' };
+  try {
+    const leases = readSavedMap(dir, 'leases.json', 'leases');
+    let owners;
+    try { owners = readSavedMap(dir, 'pins.json', 'owners'); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    // A present ownership map is authoritative, including a root-key lease
+    // transferred to another chat. Only legacy state falls back to chat IDs.
+    const ids = owners ? Object.keys(owners).filter(id => owners[id] === threadId) : [threadId];
+    const devices = ids.filter(id => Object.hasOwn(leases, id) && leases[id]).map(id => leaseDiagnostics(leases[id]));
+    const device = devices.length > 1 ? { state: 'multiple', devices } : devices[0] ?? { state: 'unassigned' };
+    return { ...device, source: 'saved_state' };
   } catch (error) {
     return { state: error.code === 'ENOENT' ? 'unassigned' : 'unknown', source: 'saved_state' };
-  } finally { if (fd !== undefined) fs.closeSync(fd); }
+  }
 }
 
 function sdkDiagnostics() {
@@ -86,7 +104,8 @@ async function helperDiagnostics(info, threadId, supportsDiagnostics) {
     if (!response.ok || !reply.ok || snapshot?.schemaVersion !== 1 || !snapshot.device || !snapshot.display) return { helper: result };
     result.snapshot = 'available';
     // Rebuild the output: future helper versions cannot accidentally leak extra fields.
-    const device = { ...leaseDiagnostics(snapshot.device), processRunning: bool(snapshot.device.processRunning), source: 'helper' };
+    const device = { ...leaseDiagnostics(snapshot.device), source: 'helper' };
+    if (device.kind === 'emulator') device.processRunning = bool(snapshot.device.processRunning);
     const display = { viewers: count(snapshot.display.viewers), encoderActive: bool(snapshot.display.encoderActive),
       videoSessionReady: bool(snapshot.display.videoSessionReady), retryPending: bool(snapshot.display.retryPending),
       consecutiveFailures: count(snapshot.display.consecutiveFailures), inputActive: bool(snapshot.display.inputActive) };
@@ -109,7 +128,7 @@ export async function collectDiagnostics({ dir, webDir, info, threadId, version:
     device: runtime.device ?? savedDevice(dir, threadId), display: runtime.display ?? null,
     host, findings: [],
     limitations: [
-      'Device state is the recorded lease and process liveness, not an Android boot or ADB connectivity check.',
+      'Device state is the recorded pin and, for emulators, process liveness; this diagnostic does not check Android boot or ADB connectivity.',
       'Host events are recent history, not proof of a current failure. Unattributed events may belong to another chat.',
       'Host diagnostic coverage depends on the integration; no matching event does not prove the panel works.',
       'Versions describe this loaded tool and the running helper, not the latest available release.',
@@ -118,16 +137,17 @@ export async function collectDiagnostics({ dir, webDir, info, threadId, version:
   const add = (code, message, nextStep) => report.findings.push({ code, message, nextStep });
   if (!threadId) add('AE_THREAD_REQUIRED', 'The host did not supply a chat identity; device checks were skipped.', 'Run this tool from the intended chat.');
   if (!report.plugin.panelFilesAvailable) add('AE_RESOURCE_LOAD', 'The loaded panel files are missing or unreadable.', 'Reinstall the plugin and reopen the panel.');
-  if (!report.sdk.emulator || !report.sdk.adb) add('AE_SDK_MISSING', 'The Android Emulator or ADB executable is unavailable.', 'Install Android Emulator and Platform Tools, or set ANDROID_HOME to the SDK.');
-  if (runtime.helper.status !== 'reachable') add('AE_HELPER_UNAVAILABLE', 'The helper could not be reached; saved device state may be stale.', 'Use emulator_status to reconnect or start the helper. This diagnostic did not start it.');
+  if (!report.sdk.adb) add('AE_SDK_MISSING', 'The ADB executable is unavailable.', 'Install Android SDK Platform Tools, or set ANDROID_HOME to the SDK.');
+  else if (report.device.kind === 'emulator' && !report.sdk.emulator) add('AE_EMULATOR_MISSING', 'The Android Emulator executable is unavailable.', 'Install Android Emulator in this SDK to start a virtual device.');
+  if (runtime.helper.status !== 'reachable') add('AE_HELPER_UNAVAILABLE', 'The helper could not be reached; saved device state may be stale.', 'Check device status to reconnect or start the helper. This diagnostic did not start it.');
   else if (runtime.helper.pluginVersion && runtime.helper.pluginVersion !== PLUGIN_VERSION) add('AE_VERSION_MISMATCH', 'This chat and the running helper use different plugin versions.', 'Reload the plugin or reopen the host so chats use the same installed version.');
   if (threadId && runtime.helper.status === 'reachable' && runtime.helper.snapshot !== 'available') add('AE_DIAGNOSTICS_PARTIAL', 'The helper did not provide a live diagnostic snapshot.', 'An older helper needs the updated plugin loaded. If versions match, check helper connectivity.');
-  if (report.device.processRunning === false) add('AE_DEVICE_EXITED', 'The recorded emulator process has exited.', 'Use emulator_status, then emulator_start if this chat needs a device.');
+  if (report.device.processRunning === false) add('AE_DEVICE_EXITED', 'The recorded emulator process has exited.', 'Check device status, then start an emulator if this chat needs a device.');
   if (report.display?.retryPending || report.display?.consecutiveFailures) add('AE_STREAM_RETRYING', 'The display stream has failed and is recovering.', 'Inspect the panel error code; use Reconnect display if recovery does not finish.');
   const lines = [
     `Android emulator diagnostics (${report.collectedAt})`,
     `Plugin ${PLUGIN_VERSION}; helper ${runtime.helper.pluginVersion ?? 'unknown'} (${runtime.helper.status}).`,
-    `Device: ${report.device.serial ?? 'none/unknown'}; recorded state ${report.device.state}; process running ${report.device.processRunning ?? 'unknown'}.`,
+    ...(report.device.devices ?? [report.device]).map(device => `Device: ${device.serial ?? 'none/unknown'}; recorded state ${device.state}; process running ${device.processRunning ?? 'unknown'}.`),
     report.display ? `Display: ${report.display.viewers ?? 'unknown'} viewer(s), encoder active ${report.display.encoderActive ?? 'unknown'}, retry pending ${report.display.retryPending ?? 'unknown'}.` : 'Display: unavailable.',
     ...report.findings.map(f => `[${f.code}] ${f.message} ${f.nextStep}`),
     `Recent host failures: ${host.events.length}; logs ${host.status}${host.tailLimited || host.fileLimitReached || host.filesSkipped ? ' (partial coverage)' : ''}. These may be unrelated to the current panel.`,

@@ -64,27 +64,27 @@ test('Codex entrypoints declare a ui:// resource, a title, and a theme-aware ico
 
 test('agent interaction tools expose bounded waits and long presses', () => {
   const byName = new Map(TOOLS.map((tool) => [tool.name, tool]));
-  const waitFor = byName.get('emulator_wait_for');
+  const waitFor = byName.get('wait_for_screen');
   assert.equal(waitFor.annotations.readOnlyHint, true);
   assert.deepEqual(waitFor.inputSchema.properties.state.enum, ['appears', 'disappears']);
   assert.deepEqual(waitFor.inputSchema.properties.timeoutMs, { type: 'integer', minimum: 1, maximum: 30_000, description: 'Default 10000; maximum 30000.' });
-  assert.deepEqual(byName.get('emulator_tap').inputSchema.properties.durationMs, { type: 'integer', minimum: 1, maximum: 10_000, description: 'Long-press duration; maximum 10000.' });
+  assert.deepEqual(byName.get('tap_screen').inputSchema.properties.durationMs, { type: 'integer', minimum: 1, maximum: 10_000, description: 'Long-press duration; maximum 10000.' });
 });
 
 test('agent device tools bound searches, expose partial observation, and keep app control explicit', () => {
   const byName = new Map(TOOLS.map((tool) => [tool.name, tool]));
-  const scrollTo = byName.get('emulator_scroll_to');
+  const scrollTo = byName.get('scroll_to_element');
   assert.equal(scrollTo.annotations.readOnlyHint, false);
   assert.deepEqual(scrollTo.inputSchema.properties.maxSwipes, { type: 'integer', minimum: 1, maximum: 10, description: 'Default 5; maximum 10.' });
   assert.deepEqual(scrollTo.inputSchema.properties.direction.enum, ['up', 'down', 'left', 'right']);
   assert.equal(scrollTo.inputSchema.properties.tap.description, 'Default false. Tap the element only after it is found.');
-  assert.equal(byName.get('emulator_observe').annotations.readOnlyHint, true);
+  assert.equal(byName.get('inspect_screen').annotations.readOnlyHint, true);
 
-  const type = byName.get('emulator_type');
+  const type = byName.get('type_text');
   assert.deepEqual(type.inputSchema.required, ['text']);
   assert.deepEqual(Object.keys(type.inputSchema.properties.target.properties), ['text', 'description', 'resourceId']);
 
-  const app = byName.get('emulator_app');
+  const app = byName.get('manage_app');
   assert.deepEqual(app.inputSchema.required, ['action', 'packageName']);
   assert.deepEqual(app.inputSchema.properties.action.enum, ['restart', 'stop', 'grant_permission', 'revoke_permission']);
   assert.match(app.description, /never clears app data or uninstalls an app/);

@@ -12,7 +12,7 @@ export function panelResource({ uri, view, webDir, panelScript, theme = null, me
     .replace('<meta name="emulator-theme" content="" />', () => `<meta name="emulator-theme" content="${themeAttribute(theme)}" />`)
     .replace('<body>', `<body data-view="${view}">`);
   return { uri, mimeType: 'text/html;profile=mcp-app', text: html,
-    _meta: { ui: { csp: { connectDomains: [], resourceDomains: [] }, prefersBorder: false }, ...meta } };
+    _meta: { ui: { csp: { connectDomains: [], resourceDomains: [], ...(view === 'device' ? { frameDomains: ['blob:'] } : {}) }, prefersBorder: false }, ...meta } };
 }
 
 export function mentionResource(uri) {
@@ -20,7 +20,7 @@ export function mentionResource(uri) {
   if (!match) return null;
   const name = decodeURIComponent(match[2]);
   const text = match[1] === 'avd'
-    ? `Android virtual device "${name}". Start it for this chat with emulator_start {"avd": "${name}"}.`
-    : `Android app "${name}", installed on this chat's emulator. Open it with emulator_open {"packageName": "${name}"}.`;
+    ? `Android virtual device "${name}". Start it for this chat using this name as avd.`
+    : `Android app "${name}", installed on this chat's device. Open it using this name as packageName.`;
   return { uri, mimeType: 'text/plain', text };
 }

@@ -97,8 +97,8 @@ test('live backend switching routes only the owning chat, rejects active work, a
   const channels = {};
   for (const thread of ['A', 'B']) {
     await call(thread, 'emulator_backends', { action: 'select', set: { connection: 'first', capture: 'candidate' } });
-    const panel = await call(thread, 'emulator_panel');
-    channels[thread] = { ...panel.meta.panel.channel, session: thread };
+    const inventory = await call(thread, 'emulator_devices');
+    channels[thread] = { ...inventory.meta.panels[thread].channel, session: thread };
     await call(thread, 'emulator_stream', channels[thread]);
     await call(thread, 'emulator_screenshot');
   }

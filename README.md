@@ -1,6 +1,6 @@
 # Android Emulator Plugin
 
-Run, control, and test Android apps from Codex. Each chat gets its own emulator and a live panel where you can watch the agent work or take control.
+Run, control, and test Android apps from Codex. Pin emulators and connected Android devices to a chat, then watch the agent work or take control in the live panel.
 
 ![An Android emulator running beside a Codex chat, with device controls in the side panel.](assets/screenshots/live-emulator.png)
 
@@ -19,7 +19,8 @@ Run, control, and test Android apps from Codex. Each chat gets its own emulator 
 
 ## Features
 
-- **One emulator per chat:** each chat gets its own device, so agents can work in parallel without competing for the same emulator.
+- **Exclusive devices per chat:** pin multiple emulators or connected Android devices for before/after testing. Each device belongs to one chat; moving a connected device to another chat requires confirmation.
+- **Compare devices:** switch between device tabs or drag one tab onto another to view both side by side. Hidden tabs pause their streams.
 - **Live controls:** tap, swipe, type, rotate, adjust volume, and change foldable posture.
 - **Agent tools:** inspect screenshots and UI elements, target controls by name, enter text, and wait for screen changes.
 - **App testing:** install APKs, open apps and links, manage permissions, and change device conditions such as dark mode, font size, location, and battery level.
@@ -31,10 +32,12 @@ The **Android Emulators** sidebar manages running devices and saved virtual devi
 ## Requirements
 
 - Codex desktop with plugin support.
-- Android SDK Emulator, platform tools, and an Android system image on macOS or Linux. Android Studio can install these through SDK Manager.
+- Android SDK Platform Tools on macOS or Linux. Virtual devices also need Android SDK Emulator and a system image. Android Studio can install these through SDK Manager.
 - Node.js 20 or newer. The plugin uses Codex's bundled runtime when available.
 
 Use an existing Android Virtual Device or ask the agent to create one. Set `ANDROID_HOME` if your SDK is installed in a custom location. Screen memory prepares its dependencies on first use and needs internet access for missing downloads.
+
+For a physical device, enable USB debugging, connect it, and accept Android's debugging prompt. Select it from the panel's device dropdown. Unpinning releases the connection without shutting down the phone. Rotation, simulated location/battery, fold posture, and snapshots require an emulator.
 
 ## Install
 

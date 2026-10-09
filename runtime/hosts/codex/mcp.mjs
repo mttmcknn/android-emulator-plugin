@@ -10,7 +10,7 @@ import { diagnosticError } from '../../core/lib/errors.mjs';
 import { PLUGIN_VERSION, HELPER_VERSION, stateDir } from './config.mjs';
 import { readCodexTheme } from './theme.mjs';
 import { collectDiagnostics } from './diagnostics.mjs';
-import { APK_URI, iconFor, MANAGER_URI, PANEL_URI, THREADLESS, TOOLS } from './tools.mjs';
+import { APK_URI, iconFor, MANAGER_URI, PANEL_URI, THREADLESS, TOOLS, TOOL_NAMES, runtimeToolName, toolReferences } from './tools.mjs';
 
 const dir = stateDir();
 const runtimeRoot = retainRuntime(fileURLToPath(new URL('../../', import.meta.url)), dir);
@@ -23,16 +23,19 @@ const views = { [PANEL_URI]: 'device', [MANAGER_URI]: 'manager', [APK_URI]: 'apk
 
 serveMcp(createMcpHandler({
   serverInfo: { name: 'android-emulator-plugin', title: 'Android Emulators', version: PLUGIN_VERSION, icons: iconFor('android') },
-  instructions: EMULATOR_INSTRUCTIONS, tools: TOOLS,
+  instructions: toolReferences(EMULATOR_INSTRUCTIONS), tools: TOOLS,
   capabilities: { experimental: { 'openai/settings': settings }, extensions: { 'openai/settings': settings } },
   resources: Object.entries(views).map(([uri, view]) => ({ uri, name: `Emulator ${view === 'device' ? 'panel' : view}`, mimeType: 'text/html;profile=mcp-app' })),
   readResource(uri) {
     if (views[uri]) {
       try {
-        return panelResource({ uri, view: views[uri], webDir, panelScript, theme: readCodexTheme(), meta: {
+        const resource = panelResource({ uri, view: views[uri], webDir, panelScript, theme: readCodexTheme(), meta: {
           'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'] },
           'openai/widgetDescription': 'Run apps and control this chat’s Android device.',
         } });
+        const names = JSON.stringify(TOOL_NAMES).replaceAll('<', '\\u003c');
+        resource.text = resource.text.replace('<head>', `<head><script type="application/json" id="codex-tool-names">${names}</script>`);
+        return resource;
       } catch (error) { throw diagnosticError('AE_RESOURCE_LOAD', 'The emulator panel files could not be read. Reinstall the plugin and reopen the panel.', error); }
     }
     const mention = mentionResource(uri);
@@ -40,6 +43,7 @@ serveMcp(createMcpHandler({
     throw Object.assign(new Error(`Unknown resource ${uri}`), { code: -32602 });
   },
   callTool(name, args, meta) {
+    name = runtimeToolName(name);
     const threadId = meta?.threadId;
     // Diagnostics cannot upgrade/restart a helper, even if the plugin just updated.
     if (name === 'emulator_diagnostics') return collectDiagnostics({ dir, webDir, info: helper.readInfo(), threadId });

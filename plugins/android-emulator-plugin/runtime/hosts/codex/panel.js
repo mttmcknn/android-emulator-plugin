@@ -4,6 +4,7 @@
   const waiting = new Map();
   const handlers = new Map();
   let toolInput = {};
+  const toolNames = JSON.parse(document.querySelector('#codex-tool-names')?.textContent ?? '{}');
 
   window.addEventListener('message', (event) => {
     const message = event.data;
@@ -70,7 +71,7 @@
         }, 800);
       });
     },
-    callTool: (name, args, timeoutMs) => request('tools/call', { name, arguments: args }, timeoutMs),
+    callTool: (name, args, timeoutMs) => request('tools/call', { name: toolNames[name] ?? name, arguments: args }, timeoutMs),
     openUrl: (url) => request('ui/open-link', { url }),
     setDisplayMode: () => notify('ui/notifications/size-changed', { height: 640 }),
     requestDisplayMode: (mode) => request('ui/request-display-mode', { mode }),

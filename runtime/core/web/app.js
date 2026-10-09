@@ -1,6 +1,10 @@
 // Android Emulators UI. Runs in a host panel or as a page served by the local helper.
 const $ = (id) => document.getElementById(id);
-const view = document.body.dataset.view ?? 'device';
+let view = document.body.dataset.view ?? 'device';
+const deviceFrame = document.body.hasAttribute('data-device-frame') || new URLSearchParams(location.search).get('deviceFrame') === '1';
+if (deviceFrame) document.body.setAttribute('data-device-frame', 'true');
+// Capture the self-contained resource before the workspace moves the launcher or changes UI.
+const deviceTemplate = !deviceFrame ? document.documentElement.cloneNode(true) : null;
 const host = globalThis.emulatorHost;
 const embedded = Boolean(host?.embedded);
 
@@ -18,6 +22,8 @@ const minimapDrawer = $('minimap-drawer');
 const menu = $('device-menu');
 
 let capabilities = {};
+let hostInitialization = null;
+let latestHostContext = {};
 let socketUrl = null;
 let fallbackUrl = null;
 let lastStatus = null;
@@ -47,6 +53,8 @@ const pretty = (name) => name.replaceAll('_', ' ');
 // ---- Host integration -----------------------------------------------------------
 
 function applyHostContext(context = {}) {
+  latestHostContext = { ...latestHostContext, ...context };
+  globalThis.__emulatorWorkspaceContext?.(latestHostContext);
   if (context.theme === 'light' || context.theme === 'dark') hostMode = context.theme;
   for (const [name, value] of Object.entries(context.styles?.variables ?? {})) {
     if (value) document.documentElement.style.setProperty(name, value);
@@ -65,7 +73,7 @@ function setDisplayMode(mode) {
 
 async function initHost() {
   host.onContextChange(applyHostContext);
-  const init = await host.initialize();
+  const init = hostInitialization = await host.initialize();
   capabilities = init?.capabilities ?? {};
   applyHostContext(init?.context);
 }
@@ -221,6 +229,7 @@ let channel = null;
 
 // Iframes inherit document visibility, but CSS-hidden panels need an intersection signal too.
 let panelInViewport = true;
+let parentPanelVisible = true;
 let pageHidden = false;
 let disposed = false;
 let activeUploads = 0;
@@ -228,7 +237,7 @@ let reconcileStream = () => {};
 const visibilityWaiters = new Set();
 
 function panelVisible() {
-  return !disposed && !pageHidden && !document.hidden && panelInViewport;
+  return !disposed && !pageHidden && !document.hidden && panelInViewport && parentPanelVisible;
 }
 
 function streamNeeded() {
@@ -237,10 +246,14 @@ function streamNeeded() {
 
 function visibilityChanged() {
   reconcileStream();
+  globalThis.__emulatorWorkspaceVisibility?.(panelVisible());
   for (const wake of visibilityWaiters) wake();
 }
 
 function watchVisibility() {
+  globalThis.__emulatorFrameVisible = (visible) => { parentPanelVisible = visible; visibilityChanged(); };
+  globalThis.__emulatorFrameDispose = () => { disposed = true; visibilityChanged(); };
+  host?.onVisibilityChange?.(globalThis.__emulatorFrameVisible);
   document.addEventListener('visibilitychange', visibilityChanged);
   window.addEventListener('pagehide', () => { pageHidden = true; visibilityChanged(); });
   window.addEventListener('pageshow', () => { pageHidden = false; visibilityChanged(); });
@@ -277,6 +290,10 @@ function onConnected() {
   displayConnectingAt = Date.now();
   if (view === 'manager') refreshManager();
   else if (view === 'device') render();
+  else if (view === 'workspace' && workspaceInitialResult) {
+    renderWorkspace(workspaceInitialResult);
+    workspaceInitialResult = null;
+  }
   if (!$('logcat').hidden) send({ t: 'logcat', on: true });
 }
 
@@ -496,7 +513,8 @@ function onJson(msg) {
     hostTheme = msg.theme;
     applyTheme();
   }
-  if (msg.t === 'status') renderStatus(msg);
+  if (msg.t === 'workspace') renderWorkspace(msg);
+  else if (msg.t === 'status') renderStatus(msg);
   else if (msg.t === 'agent') showAgentEvent(msg);
   else if (msg.t === 'navigation') {
     if (minimapMap) {
@@ -748,21 +766,22 @@ function render() {
   const emulator = lastStatus?.emulator;
   const live = emulator?.state === 'ready' && session && displayReady;
   device.hidden = !live;
-  launcher.hidden = Boolean(emulator) || !lastStatus;
+  launcher.hidden = Boolean(emulator) || !lastStatus || document.body.hasAttribute('data-device-frame');
   if (live) {
     showMessage('');
     layout();
   } else if (displayError && emulator?.state === 'ready') showDisplayError();
   else if (emulator?.state === 'booting') showMessage(`Booting ${pretty(emulator.avd)}…`);
+  else if (emulator && emulator.state !== 'ready') showMessage(`${emulator.label ?? emulator.serial ?? 'Device'} is ${emulator.state ?? 'unavailable'}. ${emulator.kind === 'physical' ? 'Reconnect it and accept USB debugging on the device.' : 'Waiting for the device to become ready.'}`);
   else if (emulator) showMessage('Connecting display…');
   else showMessage(lastStatus ? '' : 'Connecting…');
 }
 
 function renderPostures() {
-  const foldable = lastStatus?.foldable;
+  const foldable = lastStatus?.emulator?.kind === 'physical' ? null : lastStatus?.foldable;
   $('fold-controls').hidden = !foldable?.postures?.length;
   for (const button of document.querySelectorAll('[data-posture]')) {
-    const supported = foldable?.postures.includes(button.dataset.posture) ?? false;
+    const supported = foldable?.postures?.includes(button.dataset.posture) ?? false;
     button.hidden = !supported;
     button.disabled = !supported || !connected || lastStatus?.emulator?.state !== 'ready' || postureChanging;
     button.setAttribute('aria-pressed', String(foldable?.posture === button.dataset.posture));
@@ -819,7 +838,7 @@ function renderLauncher(status) {
           start.addEventListener('click', () => startDevice('emulator_start', { avd: name }, name));
           const remove = deleteDeviceButton(name, inUse.has(name), async () => {
             const updated = await runAction('emulator_delete_avd', { avd: name, confirmed: true });
-            if (updated) renderStatus(updated);
+            if (updated) { if (view === 'workspace') await refreshWorkspace(); else renderStatus(updated); }
           });
           return element('li', {}, [
             element('span', { className: 'avd-name', textContent: pretty(name), title: pretty(name) }),
@@ -884,11 +903,15 @@ function renderStatus(status) {
   if (view !== 'device') return;
   const emulator = status.emulator;
   $('dot').className = `dot ${emulator?.state ?? ''}`;
-  $('title').textContent = emulator ? pretty(emulator.avd) : 'Android Emulator';
+  $('title').textContent = emulator ? emulator.label ?? pretty(emulator.avd ?? emulator.serial) : 'Android Device';
   $('subtitle').textContent = emulator ? `${emulator.serial}${emulator.readOnly ? ' · Read-only' : ''}` : 'No device';
-  const owned = emulator && status.createdByThisThread.some(({ name }) => name === emulator.avd);
+  const physical = emulator?.kind === 'physical';
+  const owned = emulator && !physical && (status.createdByThisThread ?? []).some(({ name }) => name === emulator.avd);
+  for (const section of document.querySelectorAll('[data-emulator-only]')) section.hidden = physical;
+  for (const button of document.querySelectorAll('[data-rotate]')) button.closest('.rail-group').hidden = physical;
+  $('stop').textContent = physical ? 'Unpin device' : 'Stop';
   $('details').textContent = emulator
-    ? `${emulator.avd} on ${emulator.serial}. ${emulator.readOnly ? 'Read-only: changes are discarded on stop.' : owned ? 'Created for this chat.' : 'Changes are saved to this AVD.'}`
+    ? physical ? `${emulator.label ?? 'Connected device'} · ${emulator.serial}. Unpinning disconnects this chat without shutting down the device.` : `${emulator.avd} on ${emulator.serial}. ${emulator.readOnly ? 'Read-only: changes are discarded on stop.' : owned ? 'Created for this chat.' : 'Changes are saved to this AVD.'}`
     : '';
   $('stop-delete').hidden = !owned;
   $('record').classList.toggle('recording', Boolean(status.recording));
@@ -904,9 +927,9 @@ function renderStatus(status) {
     drawer.hidden = true;
     $('logcat').hidden = true;
     resetDecoder();
-    renderLauncher(status);
+    if (!deviceFrame) renderLauncher(status);
   }
-  renderMenu();
+  if (!deviceFrame) renderMenu();
   render();
 }
 
@@ -1079,6 +1102,7 @@ async function runAction(tool, args, done) {
 }
 
 async function startDevice(tool, args, label) {
+  if (view === 'workspace') return workspaceAction(tool, args, `Starting ${pretty(label)}…`);
   launcher.hidden = true;
   showMessage(`Starting ${pretty(label)}…`);
   if (!(await runAction(tool, args))) render();
@@ -1363,6 +1387,7 @@ const META_CTRL_ON = 0x1000;
 function studioShortcut(event) {
   if (!(event.metaKey || event.ctrlKey) || lastStatus?.emulator?.state !== 'ready') return false;
   const key = event.key.toLowerCase();
+  if (lastStatus?.emulator?.kind === 'physical' && (key === 'arrowleft' || key === 'arrowright')) return false;
   const actions = {
     arrowleft: () => runAction('emulator_settings', { rotate: 'left' }),
     arrowright: () => runAction('emulator_settings', { rotate: 'right' }),
@@ -1490,7 +1515,7 @@ $('more').addEventListener('click', () => {
   closeMinimap();
   drawer.hidden = !drawer.hidden;
   $('more').setAttribute('aria-pressed', String(!drawer.hidden));
-  if (!drawer.hidden) refreshSnapshots();
+  if (!drawer.hidden && lastStatus?.emulator?.kind !== 'physical') refreshSnapshots();
 });
 drawer.querySelector('[data-close]').addEventListener('click', () => {
   drawer.hidden = true;
@@ -1556,6 +1581,7 @@ $('log-pause').addEventListener('click', () => {
 $('log-level').addEventListener('change', refilterLog);
 $('log-filter').addEventListener('input', refilterLog);
 $('device-button').addEventListener('click', () => {
+  if (deviceFrame) return;
   menu.hidden = !menu.hidden;
   $('device-button').setAttribute('aria-expanded', String(!menu.hidden));
 });
@@ -1572,6 +1598,379 @@ $('create-form').addEventListener('submit', (event) => {
     profile.selectedOptions[0]?.textContent ?? 'device',
   );
 });
+
+// ---- Device workspace ---------------------------------------------------------
+
+const workspaceFrames = new Map();
+const workspaceCaptureContexts = new Map();
+let workspaceContextUpdate = Promise.resolve();
+let workspaceStatus = null;
+let workspaceInitialResult = null;
+const shownTransferRequests = new Set();
+let activeDeviceId = null;
+let comparisonDeviceId = null;
+let workspaceLauncherOpen = false;
+let draggedDeviceId = null;
+let workspaceBusy = false;
+
+// Keep selection stable across refreshes and remove a missing comparison partner.
+function workspaceSelection(devices, activeId, comparisonId) {
+  const ids = new Set(devices.map(({ id }) => id));
+  const active = ids.has(activeId) ? activeId : devices[0]?.id ?? null;
+  return { activeId: active, comparisonId: ids.has(comparisonId) && comparisonId !== active ? comparisonId : null };
+}
+
+function connectedDeviceHint(device) {
+  if (device.state === 'unauthorized') return 'Allow USB debugging on the device';
+  if (device.state === 'offline') return 'Offline · reconnect the device';
+  if (device.state !== 'device' && device.state !== 'ready') return device.state ?? 'Unavailable';
+  return device.ownerTitle ? `Pinned to ${device.ownerTitle}` : device.ownerThreadId ? 'Pinned to another chat' : 'Available';
+}
+
+function initializeWorkspace(initialResult = null) {
+  if (view === 'workspace') return;
+  workspaceInitialResult = initialResult;
+  view = 'workspace';
+  $('device-view').hidden = true;
+  $('workspace-view').hidden = false;
+  $('workspace-launcher').append(launcher);
+  $('workspace-main').append(message);
+  globalThis.__emulatorDeviceHost = (id) => {
+    const entry = workspaceFrames.get(id);
+    if (!entry) throw new Error('This device tab is no longer pinned.');
+    return {
+      ...host,
+      embedded: true,
+      initialize: async () => ({ ...hostInitialization, context: { ...latestHostContext, displayMode: 'fullscreen' } }),
+      firstToolResult: async () => ({ _meta: { panel: entry.panel } }),
+      onContextChange: (handler) => { entry.contextHandler = handler; },
+      onTeardown: (handler) => { entry.teardownHandler = handler; },
+      onVisibilityChange: (handler) => { entry.visibilityHandler = handler; handler(!entry.frame.hidden && panelVisible()); },
+      callTool: (name, args = {}, timeout) => host.callTool(name, name === 'emulator_stream' ? args : { ...args, deviceId: id }, timeout),
+      // Host context updates replace the whole panel context; preserve other device captures.
+      updateContext: (content) => {
+        const updating = workspaceContextUpdate.catch(() => {}).then(async () => {
+          const contexts = new Map(workspaceCaptureContexts);
+          contexts.set(id, content);
+          await host.updateContext([...contexts.values()].flat());
+          workspaceCaptureContexts.set(id, content);
+        });
+        workspaceContextUpdate = updating;
+        return updating;
+      },
+      setDisplayMode: () => {},
+    };
+  };
+  globalThis.__emulatorWorkspaceContext = (context) => {
+    for (const entry of workspaceFrames.values()) entry.contextHandler?.({ ...context, displayMode: 'fullscreen' });
+  };
+  globalThis.__emulatorWorkspaceVisibility = (visible) => {
+    for (const entry of workspaceFrames.values()) setDeviceFrameVisible(entry, visible && !entry.frame.hidden);
+  };
+  host?.onTeardown?.(() => {
+    for (const entry of workspaceFrames.values()) disposeDeviceFrame(entry);
+    workspaceFrames.clear();
+  });
+  $('workspace-device-button').addEventListener('click', async () => {
+    const open = $('workspace-menu').hidden;
+    $('workspace-menu').hidden = !open;
+    $('workspace-device-button').setAttribute('aria-expanded', String(open));
+    if (open) await refreshWorkspace();
+  });
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('#workspace-menu, #workspace-device-button')) closeWorkspaceMenu();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !$('workspace-menu').hidden) {
+      closeWorkspaceMenu();
+      $('workspace-device-button').focus();
+    }
+  });
+  $('workspace-refresh').addEventListener('click', () => refreshWorkspace());
+  $('workspace-compare').addEventListener('click', () => {
+    comparisonDeviceId ??= workspaceStatus?.devices.find(({ id }) => id !== activeDeviceId)?.id ?? null;
+    workspaceLauncherOpen = false;
+    renderWorkspaceLayout();
+  });
+  $('workspace-single').addEventListener('click', () => {
+    comparisonDeviceId = null;
+    workspaceLauncherOpen = false;
+    renderWorkspaceLayout();
+  });
+  $('workspace-launcher-close').addEventListener('click', () => {
+    workspaceLauncherOpen = false;
+    renderWorkspaceLayout();
+  });
+  $('workspace-tabs').addEventListener('keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const tabs = [...$('workspace-tabs').querySelectorAll('[role="tab"]')];
+    const index = tabs.indexOf(event.target);
+    if (index < 0) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    selectWorkspaceDevice(tabs[next].dataset.deviceId);
+    tabs[next].focus();
+  });
+  showMessage('Connecting devices…');
+}
+
+function closeWorkspaceMenu() {
+  $('workspace-menu').hidden = true;
+  $('workspace-device-button').setAttribute('aria-expanded', 'false');
+}
+
+async function refreshWorkspace() {
+  try {
+    const result = await call('emulator_devices');
+    renderWorkspace(result);
+    return result;
+  } catch (error) {
+    $('workspace-feedback').textContent = error.message;
+    return null;
+  }
+}
+
+async function workspaceAction(tool, args, feedback = '') {
+  if (workspaceBusy) return null;
+  workspaceBusy = true;
+  closeWorkspaceMenu();
+  $('workspace-feedback').textContent = feedback;
+  try {
+    const result = await call(tool, args);
+    const confirmation = result?.structuredContent?.confirmationRequired;
+    if (confirmation) {
+      confirmDeviceTransfer(confirmation);
+      $('workspace-feedback').textContent = '';
+    } else {
+      if (result?.isError) throw new Error(safeServerMessage(result.structuredContent?.error?.message, 'The device action failed.'));
+      await refreshWorkspace();
+      $('workspace-feedback').textContent = '';
+    }
+    return result;
+  } catch (error) {
+    $('workspace-feedback').textContent = error.message;
+    return null;
+  } finally {
+    workspaceBusy = false;
+    renderWorkspaceLayout();
+  }
+}
+
+function confirmDeviceTransfer(confirmation) {
+  if (!confirmation?.requestId || shownTransferRequests.has(confirmation.requestId)) return;
+  const dialog = $('transfer-dialog');
+  if (dialog.open) return;
+  shownTransferRequests.add(confirmation.requestId);
+  $('transfer-description').textContent = `Move ${confirmation.label} from ${confirmation.ownerTitle || 'another chat'} to this chat? The other chat will lose access to this device.`;
+  dialog.returnValue = '';
+  dialog.addEventListener('close', () => {
+    if (dialog.returnValue === 'move') workspaceAction('emulator_transfer', { requestId: confirmation.requestId, confirmed: true }, 'Moving device…');
+  }, { once: true });
+  dialog.showModal();
+}
+
+function selectWorkspaceDevice(id) {
+  if (!workspaceStatus?.devices.some((device) => device.id === id)) return;
+  if (comparisonDeviceId === id) comparisonDeviceId = activeDeviceId;
+  activeDeviceId = id;
+  workspaceLauncherOpen = false;
+  closeWorkspaceMenu();
+  renderWorkspaceLayout();
+}
+
+function renderWorkspace(result) {
+  if (view !== 'workspace') return;
+  const status = result?.structuredContent ?? result;
+  if (status?.confirmationRequired) confirmDeviceTransfer(status.confirmationRequired);
+  if (!Array.isArray(status?.devices)) return;
+  const previous = workspaceStatus;
+  workspaceStatus = { avds: [], profiles: [], images: [], createdByThisThread: [], connectedDevices: [], ...status };
+  workspaceStatus.panels = result.meta?.panels ?? result._meta?.panels ?? status.panels ?? previous?.panels ?? {};
+  lastStatus = workspaceStatus;
+  const added = previous && status.devices.find(({ id }) => !previous.devices.some((device) => device.id === id));
+  if (added) { activeDeviceId = added.id; workspaceLauncherOpen = false; }
+  ({ activeId: activeDeviceId, comparisonId: comparisonDeviceId } = workspaceSelection(status.devices, activeDeviceId, comparisonDeviceId));
+  for (const [id, entry] of workspaceFrames) {
+    if (status.devices.some((device) => device.id === id)) continue;
+    disposeDeviceFrame(entry);
+    entry.frame.remove();
+    workspaceFrames.delete(id);
+  }
+  $('workspace-count').textContent = String(status.devices.length);
+  // Inventory refreshes must not replace a focused tab or interrupt a drag.
+  if (!previous || JSON.stringify(previous.devices) !== JSON.stringify(status.devices)) renderWorkspaceTabs();
+  renderWorkspaceMenu();
+  renderLauncher(workspaceStatus);
+  renderConnectedDevices();
+  showMessage('');
+  renderWorkspaceLayout();
+}
+
+function renderWorkspaceTabs() {
+  $('workspace-tabs').replaceChildren(...workspaceStatus.devices.map((device, index) => {
+    const duplicate = workspaceStatus.devices.some(other => other.id !== device.id && other.label === device.label);
+    const label = duplicate ? `${device.label} · ${device.serial}` : device.label;
+    const tab = element('button', { type: 'button', role: 'tab', textContent: label, id: `device-tab-${index}` });
+    tab.dataset.deviceId = device.id;
+    tab.setAttribute('aria-controls', `device-frame-${index}`);
+    tab.title = `${device.label} · ${device.serial} · ${device.state}. Drag onto another tab to compare.`;
+    tab.addEventListener('click', () => selectWorkspaceDevice(device.id));
+    const close = element('button', { type: 'button', className: 'tab-close', textContent: '×' });
+    const action = device.kind === 'physical' ? 'Unpin' : 'Stop';
+    close.setAttribute('aria-label', `${action} ${label}`);
+    close.title = `${action} and remove from this chat`;
+    close.addEventListener('click', () => workspaceAction('emulator_stop', { deviceId: device.id }, `${action === 'Stop' ? 'Stopping' : 'Unpinning'} ${device.label}…`));
+    const wrapper = element('div', { className: 'device-tab', draggable: true }, [tab, close]);
+    wrapper.dataset.deviceId = device.id;
+    wrapper.addEventListener('dragstart', (event) => {
+      draggedDeviceId = device.id;
+      event.dataTransfer.effectAllowed = 'link';
+      event.dataTransfer.setData('text/plain', device.id);
+    });
+    wrapper.addEventListener('dragover', (event) => {
+      if (!draggedDeviceId || draggedDeviceId === device.id) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'link';
+      wrapper.classList.add('drop-target');
+    });
+    wrapper.addEventListener('dragleave', () => wrapper.classList.remove('drop-target'));
+    wrapper.addEventListener('dragend', () => {
+      draggedDeviceId = null;
+      for (const item of $('workspace-tabs').children) item.classList.remove('drop-target');
+    });
+    wrapper.addEventListener('drop', (event) => {
+      if (!draggedDeviceId || draggedDeviceId === device.id) return;
+      event.preventDefault();
+      activeDeviceId = device.id;
+      comparisonDeviceId = draggedDeviceId;
+      draggedDeviceId = null;
+      workspaceLauncherOpen = false;
+      wrapper.classList.remove('drop-target');
+      renderWorkspaceLayout();
+    });
+    return wrapper;
+  }));
+}
+
+function renderWorkspaceMenu() {
+  const items = [];
+  const heading = (text) => items.push(element('div', { className: 'menu-heading', textContent: text, role: 'presentation' }));
+  const item = (label, detail, onClick, disabled = false) => {
+    const button = element('button', { type: 'button', role: 'menuitem', className: 'device-menu-item', disabled }, [
+      element('span', { textContent: label }), element('span', { className: 'meta', textContent: detail }),
+    ]);
+    button.addEventListener('click', onClick);
+    items.push(button);
+  };
+  heading('Pinned to this chat');
+  for (const device of workspaceStatus.devices) item(device.label, `${device.serial} · ${device.state}`, () => selectWorkspaceDevice(device.id));
+  if (!workspaceStatus.devices.length) items.push(element('div', { className: 'menu-heading', textContent: 'No pinned devices' }));
+  heading('Connected devices');
+  for (const device of workspaceStatus.connectedDevices) {
+    const pinned = workspaceStatus.devices.find((entry) => entry.serial === device.serial);
+    item(device.label, `${device.serial} · ${pinned ? 'Pinned to this chat' : connectedDeviceHint(device)}`, () => pinned ? selectWorkspaceDevice(pinned.id) : workspaceAction('emulator_pin', { serial: device.serial }, 'Pinning device…'), !pinned && !['device', 'ready'].includes(device.state));
+  }
+  if (!workspaceStatus.connectedDevices.length) items.push(element('div', { className: 'menu-heading', textContent: 'No connected devices. Connect a device with USB debugging enabled.' }));
+  heading('Virtual devices');
+  for (const avd of workspaceStatus.avds) {
+    const pinned = workspaceStatus.devices.find((device) => device.avd === avd);
+    item(pretty(avd), pinned ? 'Open pinned device' : 'Start in a new tab', () => pinned ? selectWorkspaceDevice(pinned.id) : workspaceAction('emulator_start', { avd }, `Starting ${pretty(avd)}…`));
+    if (pinned) item(`New instance of ${pretty(avd)}`, 'Start another device for comparison', () => workspaceAction('emulator_start', { avd, newInstance: true }, `Starting ${pretty(avd)}…`));
+  }
+  item('New device…', 'Choose a profile and system image', () => {
+    workspaceLauncherOpen = true;
+    closeWorkspaceMenu();
+    renderWorkspaceLayout();
+    $('profile').focus();
+  });
+  $('workspace-menu').replaceChildren(...items);
+}
+
+function renderConnectedDevices() {
+  $('connected-device-group').hidden = false;
+  $('connected-device-list').replaceChildren(...(workspaceStatus.connectedDevices.length ? workspaceStatus.connectedDevices.map((device) => {
+    const pinned = workspaceStatus.devices.find((entry) => entry.serial === device.serial);
+    const button = element('button', { type: 'button', className: 'button', textContent: pinned ? 'Open' : 'Pin', disabled: !pinned && !['device', 'ready'].includes(device.state) });
+    button.setAttribute('aria-label', `${pinned ? 'Open' : 'Pin'} ${device.label}`);
+    button.addEventListener('click', () => pinned ? selectWorkspaceDevice(pinned.id) : workspaceAction('emulator_pin', { serial: device.serial }, 'Pinning device…'));
+    return element('li', {}, [element('div', { className: 'connected-device-detail' }, [element('span', { textContent: device.label }), element('span', { className: 'meta', textContent: `${device.serial} · ${pinned ? 'Pinned to this chat' : connectedDeviceHint(device)}` })]), button]);
+  }) : [element('li', { className: 'empty', textContent: 'Connect a device with USB debugging enabled.' })]));
+}
+
+function setDeviceFrameVisible(entry, visible) {
+  if (entry.visibilityHandler) entry.visibilityHandler(visible);
+  else entry.frame.contentWindow?.__emulatorFrameVisible?.(visible);
+}
+
+function disposeDeviceFrame(entry) {
+  if (entry.teardownHandler) entry.teardownHandler();
+  else entry.frame.contentWindow?.__emulatorFrameDispose?.();
+  if (entry.documentUrl) URL.revokeObjectURL(entry.documentUrl);
+}
+
+function ensureDeviceFrame(device) {
+  let entry = workspaceFrames.get(device.id);
+  if (entry) return entry;
+  const panel = workspaceStatus.panels[device.id];
+  if (embedded ? !panel?.channel : !panel?.panelUrl) return null;
+  const frame = element('iframe', { className: 'device-frame', title: device.label, hidden: true });
+  frame.setAttribute('role', 'tabpanel');
+  entry = { frame, panel };
+  workspaceFrames.set(device.id, entry);
+  frame.addEventListener('load', () => setDeviceFrameVisible(entry, !frame.hidden && panelVisible()));
+  if (embedded) {
+    const template = deviceTemplate.cloneNode(true);
+    template.querySelector('body').setAttribute('data-device-frame', device.id);
+    for (const script of template.querySelectorAll('script:not([type="module"])')) script.remove();
+    const bootstrap = document.createElement('script');
+    bootstrap.textContent = `globalThis.emulatorHost = parent.__emulatorDeviceHost(${JSON.stringify(device.id).replaceAll('<', '\\u003c')});`;
+    template.querySelector('script[type="module"]').before(bootstrap);
+    // Codex permits explicitly declared blob frames, but blocks srcdoc frames.
+    // The document and scripts stay local and inherit the panel's origin/CSP.
+    entry.documentUrl = URL.createObjectURL(new Blob(['<!doctype html>\n' + template.outerHTML], { type: 'text/html' }));
+    frame.src = entry.documentUrl;
+  } else {
+    // Browser children still use fixed device channels, never the workspace connection.
+    const url = new URL(panel.panelUrl, location.href);
+    url.searchParams.delete('workspace');
+    url.searchParams.set('deviceFrame', '1');
+    frame.src = url.href;
+  }
+  $('workspace-frames').append(frame);
+  return entry;
+}
+
+function renderWorkspaceLayout() {
+  if (!workspaceStatus) return;
+  const devices = workspaceStatus.devices;
+  const selected = [activeDeviceId, comparisonDeviceId].filter(Boolean);
+  const launcherShown = workspaceLauncherOpen || !devices.length;
+  $('workspace-launcher').hidden = !launcherShown;
+  launcher.hidden = !launcherShown;
+  $('workspace-launcher-close').hidden = !devices.length;
+  $('workspace-frames').hidden = launcherShown;
+  $('workspace-frames').classList.toggle('comparing', Boolean(comparisonDeviceId));
+  $('workspace-compare').disabled = devices.length < 2;
+  $('workspace-compare').setAttribute('aria-pressed', String(Boolean(comparisonDeviceId)));
+  $('workspace-single').setAttribute('aria-pressed', String(!comparisonDeviceId));
+  for (const device of devices) {
+    if (selected.includes(device.id) && !launcherShown) ensureDeviceFrame(device);
+  }
+  for (const [id, entry] of workspaceFrames) {
+    const index = devices.findIndex((device) => device.id === id);
+    entry.frame.id = `device-frame-${index}`;
+    entry.frame.setAttribute('aria-labelledby', `device-tab-${index}`);
+    entry.frame.hidden = launcherShown || !selected.includes(id);
+    entry.frame.style.order = String(selected.indexOf(id));
+    setDeviceFrameVisible(entry, !entry.frame.hidden && panelVisible());
+  }
+  for (const tab of $('workspace-tabs').querySelectorAll('[role="tab"]')) {
+    const active = tab.dataset.deviceId === activeDeviceId;
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+    tab.parentElement.classList.toggle('shown', selected.includes(tab.dataset.deviceId));
+  }
+}
 
 // ---- Manager view -----------------------------------------------------------------
 
@@ -1594,8 +1993,8 @@ async function refreshManager(action, args) {
   $('manager-running').replaceChildren(
     ...(overview.running.length
       ? overview.running.map((lease) => {
-          const stop = element('button', { type: 'button', className: 'button', textContent: 'Stop' });
-          stop.addEventListener('click', () => refreshManager('manager_stop', { threadId: lease.threadId }));
+          const stop = element('button', { type: 'button', className: 'button', textContent: lease.kind === 'physical' ? 'Unpin' : 'Stop' });
+          stop.addEventListener('click', () => refreshManager('manager_stop', { threadId: lease.threadId, deviceId: lease.id }));
           const actions = [stop];
           if (embedded) {
             const open = element('button', { type: 'button', className: 'button', textContent: 'Open chat' });
@@ -1604,7 +2003,7 @@ async function refreshManager(action, args) {
           }
           return element('li', {}, [
             element('span', { className: 'grow' }, [
-              `${pretty(lease.avd)} `,
+              `${lease.label ?? pretty(lease.avd ?? lease.serial)} `,
               element('span', { className: 'sub', textContent: `${lease.threadTitle ?? 'Untitled chat'} · ${lease.serial}${lease.readOnly ? ' · Temporary session' : ''}` }),
             ]),
             element('span', { className: 'row-actions' }, actions),
@@ -1653,14 +2052,19 @@ async function bootApk() {
   ].filter(([, value]) => value);
   $('apk-facts').replaceChildren(...facts.map(([label, value]) => element('div', { className: 'row' }, [element('span', { textContent: label }), element('span', { textContent: value })])));
   const install = $('apk-install');
+  const targets = result.structuredContent.devices ?? [];
+  const target = element('select');
+  target.setAttribute('aria-label', 'Install on device');
+  for (const device of targets) target.append(new Option(`${device.label} · ${device.serial}`, device.id));
+  if (targets.length > 1) install.before(target);
   install.disabled = false;
   install.classList.add('android');
-  install.textContent = result.structuredContent.emulator ? `Install on ${pretty(result.structuredContent.emulator.avd)}` : 'Start emulator and install';
+  install.textContent = targets.length > 1 ? 'Install on selected device' : result.structuredContent.emulator ? `Install on ${pretty(result.structuredContent.emulator.avd)}` : 'Start emulator and install';
   install.addEventListener('click', async () => {
     install.disabled = true;
     $('apk-status').textContent = 'Installing…';
     try {
-      const installed = await host.callTool('emulator_apk', { file, action: 'install' });
+      const installed = await host.callTool('emulator_apk', { file, action: 'install', ...(targets.length ? { deviceId: target.value } : {}) });
       $('apk-status').textContent = installed?.content?.[0]?.text ?? 'Installed.';
     } catch (error) {
       $('apk-status').textContent = error.message;
@@ -1678,17 +2082,20 @@ async function boot() {
     await initHost();
   }
   if (view === 'apk') return bootApk();
-  if (!('VideoDecoder' in window) && view === 'device') return showMessage(`[AE_VIDEO_UNSUPPORTED] This browser cannot decode the emulator video. Open the panel in ${host?.label ?? 'the host'} or a browser with WebCodecs support.`);
+  if (!('VideoDecoder' in window) && view === 'device' && deviceFrame) return showMessage(`[AE_VIDEO_UNSUPPORTED] This browser cannot decode the emulator video. Open the panel in ${host?.label ?? 'the host'} or a browser with WebCodecs support.`);
   if (embedded) {
     const result = await host.firstToolResult(view === 'manager' ? 'emulator_manager' : 'emulator_panel');
     const panel = result?._meta?.panel;
     if (!panel?.channel) return showPanelError(panelError(result, 'AE_PANEL_INIT', 'The emulator helper did not return a panel connection. Reopen the panel and try again.'));
+    if (panel.workspace && !deviceFrame) initializeWorkspace(result);
     channel = panel.channel;
     fallbackUrl = panel.panelUrl;
   } else {
     const threadId = decodeURIComponent(location.pathname.split('/')[2] ?? '');
     const key = new URLSearchParams(location.search).get('k') ?? '';
-    socketUrl = `ws://${location.host}/ws?thread=${encodeURIComponent(threadId)}&k=${encodeURIComponent(key)}`;
+    const workspace = new URLSearchParams(location.search).get('workspace') === '1';
+    if (workspace && !deviceFrame) initializeWorkspace();
+    socketUrl = `ws://${location.host}/ws?thread=${encodeURIComponent(threadId)}&k=${encodeURIComponent(key)}${workspace ? '&workspace=1' : ''}`;
   }
   if (view === 'device') showMessage('Connecting…');
   $('manager-refresh').addEventListener('click', () => refreshManager());

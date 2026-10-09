@@ -13,6 +13,7 @@ const writeFile = (file, text) => {
   fs.writeFileSync(file, text);
 };
 writeFile(path.join(sdkRoot, 'emulator', 'emulator'), '');
+writeFile(path.join(sdkRoot, 'platform-tools', 'adb'), '');
 writeFile(
   path.join(sdkRoot, 'system-images', 'android-36', 'google_apis_playstore', abi, 'source.properties'),
   `AndroidVersion.ApiLevel=36\nSystemImage.TagId=google_apis_playstore\nSystemImage.TagDisplay=Google Play\nSystemImage.Abi=${abi}\n`,

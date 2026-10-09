@@ -30,6 +30,7 @@ async function fixture(t) {
   const device = serial => ({ serial,
     foregroundActivity: async () => { state.foregroundReads++; return state.foreground; },
     open: async ({ packageName }) => { if (packageName) state.foreground = `${packageName}/.Main`; return 'Opened.'; },
+    app: async () => 'Restarted.',
     key: async () => { state.rawInputs++; return 4; },
     tap: async () => { state.rawInputs++; },
     uiNodes: async () => [{ text: 'Settings', description: '', resourceId: 'com.example:id/settings', className: 'Button', center: [10, 10], bounds: [0, 0, 20, 20], enabled: true }],
@@ -83,6 +84,37 @@ test('setup failure allows one raw action; lost action reply never falls back or
   const observation = await call('A', 'emulator_observe');
   assert.equal(observation.ok, true); assert.ok(observation.result.image);
   assert.equal(observation.result.structuredContent.errors.uiNodes, 'unavailable');
+});
+
+test('open, restart, observations and navigation expose naming work to the agent until a label is applied', async t => {
+  const { call, state, events } = await fixture(t);
+  let currentPlace = { id: 'screen_1', slug: 'screen-1', label: 'Screen 1', needsLabel: true };
+  state.execute = async args => {
+    if (args.label) currentPlace = { ...currentPlace, slug: 'settings', label: args.label, needsLabel: false };
+    return { status: 'known', summary: 'Current screen is known.', currentPlaceId: currentPlace.id, currentPlace };
+  };
+  for (const [tool, args] of [
+    ['emulator_open', { packageName: 'com.example.app' }],
+    ['emulator_app', { action: 'restart', packageName: 'com.example.app' }],
+    ['emulator_observe', {}],
+    ['emulator_tap', { text: 'Settings' }],
+    ['emulator_navigate', { action: 'whereami' }],
+  ]) {
+    const response = await call('A', tool, args);
+    assert.equal(response.ok, true);
+    assert.match(response.result.text, /screen needs a descriptive name/);
+    assert.match(response.result.text, /navigation tool/);
+    const navigation = response.result.structuredContent.navigation ?? response.result.structuredContent.result;
+    assert.equal(navigation.currentPlace.needsLabel, true);
+  }
+  const named = await call('A', 'emulator_navigate', { action: 'whereami', label: 'Settings' });
+  assert.equal(named.ok, true);
+  assert.equal(named.result.structuredContent.result.currentPlace.id, 'screen_1');
+  assert.equal(named.result.structuredContent.result.currentPlace.label, 'Settings');
+  assert.equal(events.at(-1).automatic, false, 'explicit labels must reach the native relabel path');
+  assert.doesNotMatch(named.result.text, /needs a descriptive name/);
+  const revisited = await call('A', 'emulator_observe');
+  assert.doesNotMatch(revisited.result.text, /needs a descriptive name/);
 });
 
 test('shared-map writes serialize; queued cancellation does not unlock another active writer', { timeout: 10_000 }, async t => {

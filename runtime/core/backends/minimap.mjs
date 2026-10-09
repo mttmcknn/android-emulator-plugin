@@ -69,7 +69,7 @@ export function readMinimap(cwd) {
   };
   const places = readObjects('places', p => {
     if (p.schema_version !== 'minimap.place.v1') throw new Error('Unsupported Minimap place schema.');
-    return { id: bounded(p.id, 'Place ID'), label: bounded(p.label, 'Place label'), slug: bounded(p.slug, 'Place slug') };
+    return { id: bounded(p.id, 'Place ID'), label: bounded(p.label, 'Place label'), slug: bounded(p.slug, 'Place slug'), needsLabel: /^Screen \d+$/i.test(p.label.trim()) };
   });
   const edges = readObjects('edges', e => {
     if (!['minimap.edge.v1', 'minimap.edge.v2'].includes(e.schema_version) || !Array.isArray(e.recipe)) throw new Error('Unsupported Minimap route schema.');
@@ -280,13 +280,15 @@ export function createMinimapBackend({ stateDir, executable = process.env.ANDROI
           const latest = this.status(cwd, packageName);
           const located = result.place?.id ?? result.data?.current ?? result.data?.to ?? result.data?.place ?? result.minimap?.place?.id;
           const place = latest.places.find(p => p.id === located || p.slug === located);
-          const currentPlaceId = place && ['ok', 'known', 'known_changed'].includes(result.status) ? place.id : null;
-          result = { ...result, exitCode: response.code, currentPlaceId };
+          const currentPlace = place && ['ok', 'known', 'known_changed'].includes(result.status) ? place : null;
+          result = { ...result, exitCode: response.code, currentPlaceId: currentPlace?.id ?? null, currentPlace };
           if (!automatic) return result;
           const locate = async initial => {
             const observed = initial ?? await this.execute({ cwd, serial, packageName, sessionDir, action: 'whereami' }, { signal });
             if (observed.status !== 'unknown') return observed;
             const places = this.status(cwd, packageName).places;
+            // A provisional identity lets this action finish learning its route.
+            // Tool results ask the host agent to name it from fresh UI evidence.
             let number = places.length + 1;
             while (places.some(p => p.label === `Screen ${number}`)) number++;
             return this.execute({ cwd, serial, packageName, sessionDir, action: 'whereami', label: `Screen ${number}` }, { signal });
@@ -304,11 +306,11 @@ export function createMinimapBackend({ stateDir, executable = process.env.ANDROI
             const destination = await locate();
             return { ...result, status: destination.currentPlaceId ? 'ok' : destination.status,
               summary: destination.currentPlaceId ? 'Tapped and remembered the destination.' : 'Tap completed; the destination could not be identified.',
-              currentPlaceId: destination.currentPlaceId, observation: destination };
+              currentPlaceId: destination.currentPlaceId, currentPlace: destination.currentPlace, observation: destination };
           }
           if (['back', 'scroll'].includes(options.action) && result.status === 'ok' && !result.currentPlaceId) {
             const observed = await locate();
-            return { ...result, currentPlaceId: observed.currentPlaceId, observation: observed };
+            return { ...result, currentPlaceId: observed.currentPlaceId, currentPlace: observed.currentPlace, observation: observed };
           }
           return result;
         },

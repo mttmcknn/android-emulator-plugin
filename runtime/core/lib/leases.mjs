@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { createAvd, deleteAvd } from './avds.mjs';
-import { adb, run, sdk } from './sdk.mjs';
+import { adb, run, sdk, requireEmulator } from './sdk.mjs';
 
 const PORT_FIRST = 5600;
 const PORT_LAST = 5698;
@@ -44,7 +44,7 @@ export function parseAdbDevices(stdout) {
     .slice(1)
     .map((line) => line.trim().split(/\s+/))
     .filter(([serial, state]) => serial && state)
-    .map(([serial, state]) => ({ serial, state }));
+    .map(([serial, state, ...fields]) => ({ serial, state, ...Object.fromEntries(fields.filter(field => /^(model|product|device|transport_id):/.test(field)).map(field => field.split(/:(.*)/s).slice(0, 2))) }));
 }
 
 // Chooses the first even console port whose serial and TCP ports are unused.
@@ -108,12 +108,13 @@ export class LeaseManager extends EventEmitter {
   }
 
   async avds() {
+    if (!sdk().emulator) return [];
     const result = await run(sdk().emulator, ['-list-avds'], { timeoutMs: 15_000 });
     return parseAvdList(result.stdout);
   }
 
   async devices() {
-    const result = await adb(null, ['devices'], { timeoutMs: 10_000 });
+    const result = await adb(null, ['devices', '-l'], { timeoutMs: 10_000 });
     if (result.code !== 0) throw new Error(`adb devices failed: ${result.stderr.trim()}`);
     return parseAdbDevices(result.stdout);
   }
@@ -186,6 +187,7 @@ export class LeaseManager extends EventEmitter {
   get(threadId) {
     const lease = this.leases[threadId];
     if (!lease) return null;
+    if (lease.kind === 'physical') return lease;
     if (!processAlive(lease.pid)) {
       this.log(`lease ${threadId} emulator pid ${lease.pid} exited`);
       this.remove(threadId);
@@ -234,6 +236,7 @@ export class LeaseManager extends EventEmitter {
   }
 
   async launch(threadId, { avd: requestedAvd, readOnly, coldBoot = false }) {
+    const executable = requireEmulator();
     const [avds, devices] = await Promise.all([this.avds(), this.devices()]);
     if (avds.length === 0) throw new Error('No Android Virtual Devices found. Create one in Android Studio Device Manager.');
     if (requestedAvd && !avds.includes(requestedAvd)) {
@@ -262,13 +265,14 @@ export class LeaseManager extends EventEmitter {
 
       const logFile = path.join(this.logDir, `${serial}.log`);
       const logFd = fs.openSync(logFile, 'w');
-      const child = spawn(sdk().emulator, args, { detached: true, stdio: ['ignore', logFd, logFd] });
+      const child = spawn(executable, args, { detached: true, stdio: ['ignore', logFd, logFd] });
       fs.closeSync(logFd);
       child.unref();
       this.log(`thread ${threadId} launching ${avd} as ${serial} pid ${child.pid}${ephemeral ? ' read-only' : ''}`);
 
       this.leases[threadId] = {
         threadId,
+        kind: 'emulator',
         avd,
         serial,
         port,
@@ -314,6 +318,7 @@ export class LeaseManager extends EventEmitter {
   async stop(threadId) {
     const lease = this.leases[threadId];
     if (!lease) return false;
+    if (lease.kind === 'physical') { this.remove(threadId); return true; }
     this.log(`thread ${threadId} stopping ${lease.serial}`);
     await adb(lease.serial, ['emu', 'kill'], { timeoutMs: 10_000 }).catch(() => {});
     const deadline = Date.now() + 15_000;
@@ -321,6 +326,14 @@ export class LeaseManager extends EventEmitter {
     if (processAlive(lease.pid)) process.kill(lease.pid, 'SIGTERM');
     this.remove(threadId);
     return true;
+  }
+
+  attach(threadId, device) {
+    if (Object.values(this.leases).some(lease => lease.serial === device.serial || (device.hardwareId && lease.hardwareId === device.hardwareId))) throw new Error('The device was pinned by another chat. Refresh and select it again.');
+    this.leases[threadId] = { threadId, kind: 'physical', serial: device.serial, hardwareId: device.hardwareId, avd: device.label, label: device.label, state: 'ready', startedAt: new Date().toISOString() };
+    this.save();
+    this.emit('change', threadId);
+    return this.leases[threadId];
   }
 
   // Stops emulators for archived or deleted threads, deletes their non-kept AVDs, and stops idle emulators.
@@ -340,7 +353,7 @@ export class LeaseManager extends EventEmitter {
         continue;
       }
       const lastActive = Math.max(this.activity.get(threadId) ?? 0, lease ? Date.parse(lease.readyAt ?? lease.startedAt) : 0);
-      if (lease?.state === 'ready' && idleMs > 0 && !isWatched(threadId) && Date.now() - lastActive > idleMs) {
+      if (lease?.state === 'ready' && lease.kind !== 'physical' && idleMs > 0 && !isWatched(threadId) && Date.now() - lastActive > idleMs) {
         this.log(`thread ${threadId} idle for ${Math.round((Date.now() - lastActive) / 60_000)} min; stopping ${lease.serial}`);
         await this.stop(threadId);
       }

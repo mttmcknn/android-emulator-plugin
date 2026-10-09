@@ -55,6 +55,7 @@ test('core runs without any host or MCP adapter and isolates identical session I
   const panel = await first.request('emulator_panel');
   assert.ok(panel.result.meta.panel.channel.key);
   assert.equal(panel.result.meta['openai/widgetSessionId'], undefined, 'the core does not invent host registration metadata');
+  assert.equal(panel.result.meta.ui, undefined, 'UI registration belongs to the host adapter');
   const browser = await fetch(panel.result.meta.panel.panelUrl);
   assert.equal(browser.status, 200);
   assert.match(await browser.text(), /emulator-theme/);

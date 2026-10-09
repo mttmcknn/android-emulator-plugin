@@ -1,11 +1,13 @@
 {
   "name": "android-emulator-plugin",
-  "version": "2026.10.7",
-  "description": "Use an Android emulator in each Codex chat.",
+  "version": "2026.10.9",
+  "description": "Pin and control Android emulators and connected devices in Codex chats.",
   "author": {
     "name": "Matt McKenna",
     "url": "https://github.com/mttmcknn"
   },
+  "homepage": "https://github.com/mttmcknn/android-emulator-plugin",
+  "repository": "https://github.com/mttmcknn/android-emulator-plugin",
   "license": "Apache-2.0",
   "keywords": [
     "android",
@@ -19,10 +21,11 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Android Emulators",
-    "shortDescription": "Android emulators for your Codex chats",
-    "longDescription": "Open, control, and test Android emulators from Codex. Each chat has its own device, and you can install APKs, change device conditions, record the screen, and follow actions as they happen.",
+    "shortDescription": "Android devices for every chat",
+    "longDescription": "Pin Android emulators and connected devices to Codex chats. Install APKs, record screens, and follow the agent's actions. Compare multiple devices side by side; each device belongs exclusively to one chat, with confirmation before moving a connected device.",
     "developerName": "Matt McKenna",
     "websiteURL": "https://github.com/mttmcknn/android-emulator-plugin",
+    "supportURL": "https://github.com/mttmcknn/android-emulator-plugin/issues",
     "category": "Developer Tools",
     "capabilities": [
       "Interactive",
@@ -37,7 +40,12 @@
     "brandColor": "#3DDC84",
     "composerIcon": "./assets/logo.svg",
     "logo": "./assets/logo.svg",
-    "logoDark": "./assets/logo-dark.svg"
+    "logoDark": "./assets/logo-dark.svg",
+    "screenshots": [
+      "./assets/screenshots/live-emulator.png",
+      "./assets/screenshots/device-setup.png",
+      "./assets/screenshots/device-manager.png"
+    ]
   },
   "extensions": {
     "com.openai": {

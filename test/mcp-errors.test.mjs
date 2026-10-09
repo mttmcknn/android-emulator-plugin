@@ -41,7 +41,7 @@ test('panel resources load without starting a helper; missing chat/files have st
   assert.equal(resource.result.contents[0].mimeType, 'text/html;profile=mcp-app');
   assert.match(resource.result.contents[0].text, /AE_PANEL_INIT/);
   assert.equal(fs.existsSync(path.join(state, 'daemon.json')), false, 'HTML loading cannot depend on helper health');
-  const missingThread = (await request('tools/call', { name: 'emulator_panel' })).result;
+  const missingThread = (await request('tools/call', { name: 'show_device_panel' })).result;
   assert.equal(missingThread.structuredContent.error.code, 'AE_THREAD_REQUIRED');
   assert.equal(missingThread.isError, true);
   assert.match(missingThread.content[0].text, /AE_THREAD_REQUIRED/);
@@ -65,7 +65,7 @@ test('lost helper reply has a diagnostic code and never replays the action', { t
   fs.writeFileSync(path.join(state, 'daemon.json'), JSON.stringify({ pid: process.pid, port: server.address().port }));
   fs.writeFileSync(path.join(state, 'token'), 'test-token-never-in-errors');
   const request = client(t, state);
-  const response = await request('tools/call', { name: 'emulator_status', _meta: { threadId: 'test-thread' } });
+  const response = await request('tools/call', { name: 'check_device_status', _meta: { threadId: 'test-thread' } });
   assert.equal(response.result.structuredContent.error.code, 'AE_HELPER_CONNECT');
   assert.equal(calls, 1);
   assert.doesNotMatch(JSON.stringify(response), /test-token|127\.0\.0\.1/);
@@ -87,8 +87,8 @@ test('agent diagnostics work without a helper or chat identity and preserve save
   fs.writeFileSync(path.join(state, 'leases.json'), saved);
   const request = client(t, state);
   const listing = await request('tools/list');
-  assert.equal(listing.result.tools.find(tool => tool.name === 'emulator_diagnostics').annotations.readOnlyHint, true);
-  const result = (await request('tools/call', { name: 'emulator_diagnostics', _meta: { threadId: 'test-thread' } })).result;
+  assert.equal(listing.result.tools.find(tool => tool.name === 'diagnose_device_issues').annotations.readOnlyHint, true);
+  const result = (await request('tools/call', { name: 'diagnose_device_issues', _meta: { threadId: 'test-thread' } })).result;
   assert.equal(result.isError, undefined);
   assert.equal(result.structuredContent.helper.status, 'not_found');
   assert.equal(result.structuredContent.device.serial, 'emulator-5602');
@@ -96,7 +96,7 @@ test('agent diagnostics work without a helper or chat identity and preserve save
   assert.equal(result.structuredContent.device.processRunning, true);
   assert.equal(result.structuredContent.display, null);
   assert.doesNotMatch(JSON.stringify(result), /private-|other-thread|emulator-5698/);
-  const missing = (await request('tools/call', { name: 'emulator_diagnostics' })).result;
+  const missing = (await request('tools/call', { name: 'diagnose_device_issues' })).result;
   assert.equal(missing.structuredContent.chatBound, false);
   assert.equal(missing.structuredContent.device.source, 'unavailable');
   assert.ok(missing.structuredContent.findings.some(item => item.code === 'AE_THREAD_REQUIRED'));
@@ -121,7 +121,7 @@ test('capture tools return labeled image samples to the agent and keep download 
   fs.writeFileSync(path.join(state, 'daemon.json'), JSON.stringify({ pid: process.pid, port: server.address().port }));
   fs.writeFileSync(path.join(state, 'token'), 'private-token');
   const request = client(t, state);
-  const response = (await request('tools/call', { name: 'emulator_capture', arguments: { action: 'context', captureId: 'capture-id' }, _meta: { threadId: 'test-chat' } })).result;
+  const response = (await request('tools/call', { name: 'view_or_copy_captures', arguments: { action: 'context', captureId: 'capture-id' }, _meta: { threadId: 'test-chat' } })).result;
   assert.deepEqual(response.content.map(block => block.type), ['text', 'text', 'image', 'text', 'image']);
   assert.equal(response.content[3].text, 'Frame at 1.00s');
   assert.equal(response.structuredContent.capture.file, '/owned/video.mp4');
