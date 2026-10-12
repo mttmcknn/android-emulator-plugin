@@ -27,6 +27,24 @@ process.env.ANDROID_HOME = sdkRoot;
 process.env.ANDROID_AVD_HOME = path.join(root, 'avd');
 const { createAvd, deleteAvd, systemImages } = await import('../runtime/core/lib/avds.mjs');
 
+test('system image discovery ignores files among SDK platform and tag directories', (t) => {
+  const noisySdk = fs.mkdtempSync(path.join(os.tmpdir(), 'aep-sdk-files-'));
+  t.after(() => fs.rmSync(noisySdk, { recursive: true, force: true }));
+  const images = path.join(noisySdk, 'system-images');
+  writeFile(path.join(images, '.DS_Store'), 'Finder metadata');
+  writeFile(path.join(images, 'README.txt'), 'SDK notes');
+  for (const api of [35, 36]) {
+    writeFile(path.join(images, `android-${api}`, '.DS_Store'), 'Finder metadata');
+    writeFile(path.join(images, `android-${api}`, 'google_apis', abi, 'source.properties'),
+      `AndroidVersion.ApiLevel=${api}\nSystemImage.TagId=google_apis\nSystemImage.TagDisplay=Google APIs\n`);
+  }
+
+  assert.deepEqual(systemImages(noisySdk).map(({ id, api }) => ({ id, api })), [
+    { id: `android-36/google_apis/${abi}`, api: '36' },
+    { id: `android-35/google_apis/${abi}`, api: '35' },
+  ]);
+});
+
 test('creates an AVD from a profile with the newest matching image and its skin', () => {
   const created = createAvd({ profileId: 'pixel_9', existingNames: [] });
   assert.equal(created.name, 'Pixel_9_API_36');

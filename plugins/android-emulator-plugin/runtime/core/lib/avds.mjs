@@ -56,7 +56,9 @@ function hostAbi() {
 export function systemImages(root = sdk().root) {
   const base = path.join(root, 'system-images');
   const images = [];
-  for (const platform of fs.existsSync(base) ? fs.readdirSync(base) : []) {
+  for (const entry of fs.existsSync(base) ? fs.readdirSync(base, { withFileTypes: true }) : []) {
+    if (!entry.isDirectory()) continue;
+    const platform = entry.name;
     for (const tag of fs.readdirSync(path.join(base, platform), { withFileTypes: true }).filter((entry) => entry.isDirectory())) {
       const abiDir = path.join(base, platform, tag.name, hostAbi());
       const propsFile = path.join(abiDir, 'source.properties');

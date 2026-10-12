@@ -127,6 +127,8 @@ if (process.argv[2] === '-list-avds') {
 `,
   );
   executable(path.join(sdk, 'platform-tools', 'adb'), '#!/bin/sh\nexit 0\n');
+  fs.mkdirSync(path.join(sdk, 'system-images'), { recursive: true });
+  fs.writeFileSync(path.join(sdk, 'system-images', '.DS_Store'), 'Finder metadata');
   const env = {
     ...process.env,
     ANDROID_HOME: sdk,
@@ -196,6 +198,15 @@ if (process.argv[2] === '-list-avds') {
   assert.notEqual(metaA['openai/widgetSessionId'], metaB['openai/widgetSessionId']);
   const panelA = metaA.panel;
   const panelB = metaB.panel;
+  const connected = await api(port, token, 'thread-a', 'emulator_stream', {
+    ...panelA.channel, session: 'startup-pane', wait: true,
+  });
+  const startup = connected.result.structuredContent.messages.map(({ j }) => j).filter(Boolean);
+  assert.equal(startup.some(message => message.t === 'error'), false, 'SDK files must not abort panel startup');
+  const inventory = startup.find(message => message.t === 'workspace');
+  assert.ok(inventory, 'the panel receives its initial device inventory');
+  assert.deepEqual(inventory.structuredContent.images, []);
+  assert.ok(inventory.structuredContent.avds.includes('Launcher_AVD'));
   const manager = (await api(port, token, 'thread-a', 'emulator_manager')).result.meta.panel;
   assert.equal(manager.channel.thread, 'manager');
   assert.notEqual(new URL(panelA.panelUrl).searchParams.get('k'), token);

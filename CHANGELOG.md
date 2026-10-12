@@ -8,6 +8,14 @@ dates. Versions 2026.10.7 and 2026.10.8 describe development source history; nei
 had a published GitHub release. Available history starts at this repository's
 initial commit; no history from a retired or separate repository is inferred.
 
+## [Unreleased]
+
+### Fixed
+
+- Ignore files such as macOS `.DS_Store` while discovering installed Android
+  system images, so they cannot prevent the live panel from loading its device
+  inventory and enabling controls.
+
 ## [2026.10.9]
 
 First GitHub release, combining the existing plugin, the pinned-device update in
