@@ -1,5 +1,7 @@
 # Android™ Emulator Plugin
 
+[![Featured in Android Weekly #749](https://androidweekly.net/issues/issue-749/badge)](https://androidweekly.net/issues/issue-749)
+
 Run, control, and test Android apps from Codex. Pin emulators and connected Android devices to a chat, then watch the agent work or take control in the live panel.
 
 ![An Android emulator running beside a Codex chat, with device controls in the side panel.](assets/screenshots/live-emulator.png)
