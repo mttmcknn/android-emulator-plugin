@@ -8,7 +8,10 @@ dates. Versions 2026.10.7 and 2026.10.8 describe development source history; nei
 had a published GitHub release. Available history starts at this repository's
 initial commit; no history from a retired or separate repository is inferred.
 
-## [Unreleased]
+## [2026.10.18]
+
+Includes the saved graph panel and capability-detection fixes from
+`14dab6e`, `0908702` and `b516a78`, plus the Android Weekly badge from `2a5f4fe`.
 
 ### Added
 
@@ -24,6 +27,33 @@ initial commit; no history from a retired or separate repository is inferred.
 - Reuse the dependency-free Minimap graph renderer and live host appearance in
   self-contained Codex resources and locally served panels. No screen image is
   inferred from saved metadata.
+
+### Fixed
+
+- Detect graph export from command-specific help when a compatible Minimap
+  executable has been renamed. Forward `ANDROID_EMULATOR_MINIMAP` to the plugin
+  process so an explicitly configured graph-capable build can be used.
+- Preserve navigation failures and cancellation feedback when the panel refreshes
+  saved graph metadata after an action.
+
+### Documentation
+
+- Retain the Android Weekly issue 749 badge and document graph requirements,
+  renderer provenance, and the marketplace update commands.
+
+### Upgrade requirements and limits
+
+- Refresh the marketplace, reinstall or update the plugin, and restart Codex to
+  load the new panel resources. Existing screen maps need no migration.
+- Graph export requires a separately provided Minimap 0.2.x build with the
+  `graph` command, configured through `ANDROID_EMULATOR_MINIMAP`. The managed
+  Minimap 0.2.1 download does not provide graph export; its Navigate view and
+  existing saved navigation remain supported.
+- This plugin release does not include the separate, unpublished Minimap replay
+  performance changes or claim navigation speed improvements.
+- Node.js 20+, Codex desktop, and the separately installed Android SDK remain
+  required. No new binary dependency, agreement acceptance or Registry submission
+  is included in this release.
 
 ## [2026.10.9]
 

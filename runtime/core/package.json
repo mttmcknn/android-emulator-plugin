@@ -1,6 +1,6 @@
 {
   "name": "android-emulator-runtime",
-  "version": "2026.10.9",
+  "version": "2026.10.18",
   "private": true,
   "type": "module",
   "license": "Apache-2.0"

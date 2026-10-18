@@ -28,6 +28,7 @@ Run, control, and test Android apps from Codex. Pin emulators and connected Andr
 - **App testing:** install APKs, open apps and links, manage permissions, and change device conditions such as dark mode, font size, location, and battery level.
 - **Debugging and capture:** read Logcat, diagnose connection problems, capture screenshots, record video, and copy captures to the clipboard or add them to chat.
 - **Screen memory:** automatically remember screens and routes as the agent uses an app. Return to a saved destination from the Screen map panel.
+- **Saved screen graph:** inspect screens and directed routes in the Screen map's Graph view, with a complete route list and matrix. Graph export requires a separately configured graph-capable Minimap build; see the requirements below.
 
 The **Android Emulators** sidebar manages running devices and saved virtual devices. Multiple views of a device share its video encoder; hidden panels pause streaming while the emulator remains available to the agent.
 
@@ -43,6 +44,8 @@ For a physical device, enable USB debugging, connect it, and accept Android's de
 
 Screen memory may download Minimap and [Google's Android CLI](https://developer.android.com/tools/agents/android-cli/download) directly from their upstream servers. The CLI launcher can download its own runtime and is invoked even during version checks. Review the applicable [Android SDK terms](https://developer.android.com/studio/terms) before first use; users handle their own agreement. To use installations you manage yourself, set `ANDROID_EMULATOR_MINIMAP` and `ANDROID_EMULATOR_ANDROID_CLI` to those executables. These tools are downloaded separately and are not included in the plugin archive.
 
+The graph viewer requires a Minimap 0.2.x build that provides `minimap graph`. Set `ANDROID_EMULATOR_MINIMAP` to that executable before starting Codex. The managed Minimap 0.2.1 download supports existing navigation but cannot export a graph; use the **Navigate** tab with that version. Inspecting a graph does not move the device, observe its screen, or install dependencies. Select a screen to inspect its saved metadata, then use **Go** explicitly to replay a route. Existing maps need no migration.
+
 ## Install
 
 ```sh
@@ -55,6 +58,15 @@ Restart Codex, then ask:
 > Start an Android emulator for this chat.
 
 You can also ask the agent to install an APK, test a screen, inspect Logcat, or diagnose a connection problem. Drag an APK onto the device panel to install it directly.
+
+To update an existing marketplace installation:
+
+```sh
+codex plugin marketplace upgrade mttmcknn
+codex plugin add android-emulator-plugin@mttmcknn
+```
+
+Restart Codex to load the updated tools and panel resources. The repository marketplace installs the generated plugin directory from `main`; versioned ZIPs, checksums and source provenance are also available in [GitHub releases](https://github.com/mttmcknn/android-emulator-plugin/releases).
 
 ## Captures and screen memory
 

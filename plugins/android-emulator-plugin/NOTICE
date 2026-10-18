@@ -26,8 +26,8 @@ Copyright 2026 Minimap contributors
 Unmodified JavaScript/CSS from mttmcknn/minimap local source revision
 7484edfa97cc6248d52a96342799906f72a74bbb, web/screen-graph.mjs and .css.
 Apache-2.0; see LICENSE. Plugin integration code and host styling are separate.
-The graph feature is local, unreleased work; this source revision is not a
-published Minimap release.
+This renderer is included in plugin 2026.10.18; its source revision is not a
+published Minimap release. Graph export requires a compatible external CLI.
 
 Android robot artwork (modified in logos and tool/panel icons; also visible in screenshots)
 Android is a trademark of Google LLC.

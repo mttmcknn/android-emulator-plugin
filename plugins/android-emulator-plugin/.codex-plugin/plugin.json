@@ -1,6 +1,6 @@
 {
   "name": "android-emulator-plugin",
-  "version": "2026.10.9",
+  "version": "2026.10.18",
   "description": "Pin and control Android emulators and connected devices in Codex chats.",
   "author": {
     "name": "Matt McKenna",

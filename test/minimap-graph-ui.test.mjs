@@ -63,6 +63,39 @@ test('graph selection only inspects; Go deliberately uses the existing device ch
   assert.deepEqual(JSON.parse(JSON.stringify(p.calls[0].args)), { action: 'go', target: 'detail' });
 });
 
+test('automatic graph refresh preserves navigation outcomes and failures on a legacy CLI', async () => {
+  for (const fails of [false, true]) {
+    const p = fixture(); p.load();
+    const refreshedMap = { ...p.context.map, places: [...p.context.map.places, { id: 'new', label: 'New', slug: 'new' }] };
+    p.context.reply = (_tool, args) => {
+      if (args.action === 'go') {
+        if (fails) throw new Error('Navigation interrupted. Inspect the device before continuing.');
+        return { structuredContent: { result: { status: 'no_known_path', summary: 'No saved path to Detail.' }, map: p.context.map } };
+      }
+      if (args.action === 'status') return { structuredContent: { map: refreshedMap } };
+      return { structuredContent: { graph: null, graphStatus: { status: 'unsupported', message: 'This CLI does not support graph export.' } } };
+    };
+    await p.run("runMinimapAction({action:'go',target:'detail'},'Navigation finished.')");
+    await new Promise(setImmediate);
+    assert.equal(p.$('minimap-status').textContent, fails ? 'Navigation interrupted. Inspect the device before continuing.' : 'no known path: No saved path to Detail.');
+    assert.equal(p.run('minimapMap.places.length'), 3, 'saved navigation metadata must still refresh');
+    assert.equal(p.run('minimapGraphStatus.status'), 'unsupported');
+    assert.deepEqual(p.calls.map(({ args }) => args.action), ['go', 'status', 'graph']);
+    await p.run('refreshMinimap()');
+    assert.equal(p.$('minimap-status').textContent, 'Screen map refreshed.', 'a deliberate refresh may replace the outcome');
+  }
+});
+
+test('automatic graph refresh preserves the cancellation result', async () => {
+  const p = fixture(); p.load();
+  p.context.reply = (_tool, args) => args.action === 'graph'
+    ? result(graph()) : { structuredContent: { map: p.context.map } };
+  await p.$('minimap-cancel').listeners.get('click')();
+  await new Promise(setImmediate);
+  assert.equal(p.$('minimap-status').textContent, 'Navigation stopped.');
+  assert.deepEqual(p.calls.map(({ args }) => args.action), ['cancel', 'status', 'graph']);
+});
+
 test('empty, unsupported, error and invalid graphs show honest states without invented nodes', () => {
   const p = fixture(); p.load();
   for (const status of ['uninitialized', 'unsupported', 'unavailable', 'error']) {

@@ -1126,9 +1126,10 @@ function applyMinimapResult(result, fallback) {
   renderMinimap();
 }
 
-async function refreshMinimap() {
+async function refreshMinimap({ preserveStatus = false } = {}) {
   if (minimapDrawer.hidden) return;
   const refreshId = ++minimapRefreshId;
+  const previousStatus = preserveStatus ? $('minimap-status').textContent : null;
   minimapGraphLoading = true;
   renderMinimapGraph();
   const [mapResult, graphResult] = await Promise.allSettled([
@@ -1145,6 +1146,8 @@ async function refreshMinimap() {
     minimapGraphStatus = { status: 'error', message: graphResult.reason.message };
     renderMinimapGraph();
   }
+  // Refresh saved metadata after an action without erasing its result or warning.
+  if (preserveStatus) setMinimapStatus(previousStatus);
 }
 
 async function runMinimapAction(args, fallback) {
@@ -1163,7 +1166,7 @@ async function runMinimapAction(args, fallback) {
   } finally {
     minimapBusyUI = false;
     renderMinimap();
-    if (!minimapDrawer.hidden) refreshMinimap();
+    if (!minimapDrawer.hidden) refreshMinimap({ preserveStatus: true });
   }
 }
 
@@ -1652,7 +1655,7 @@ $('minimap-cancel').addEventListener('click', async () => {
     minimapBusyUI = false;
     minimapCancelling = false;
     renderMinimap();
-    if (!minimapDrawer.hidden) refreshMinimap();
+    if (!minimapDrawer.hidden) refreshMinimap({ preserveStatus: true });
   }
 });
 $('snapshot-form').addEventListener('submit', (event) => {
