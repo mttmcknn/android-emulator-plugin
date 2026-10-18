@@ -52,6 +52,8 @@ function fixture({ embedded = false, initialize = true } = {}) {
     let visible = true;
     function panelVisible() { return visible; }
     function renderLauncher() {} function showMessage() {}
+    function applyMinimapSettings(settings) { latestSettings = settings; }
+    let latestSettings;
     const actionCalls = [];
     async function call(tool, args) { actionCalls.push({ tool, args }); return tool === 'emulator_devices' ? currentInventory : {}; }
     let currentInventory;

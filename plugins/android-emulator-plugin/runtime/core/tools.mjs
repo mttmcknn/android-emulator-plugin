@@ -39,7 +39,7 @@ export function iconFor(glyph) {
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
 const action = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
-// Navigation/UI inspection can prepare missing tools from public upstream URLs.
+// When tracking is enabled, navigation/UI inspection can prepare missing tools.
 const navigationAction = { ...action, openWorldHint: true };
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 const appOnly = { ui: { visibility: ['app'] } };
@@ -58,7 +58,7 @@ export const TOOLS = [
   },
   {
     name: 'emulator_navigate',
-    description: "Navigate this chat's app using automatically remembered screens and routes. Ordinary app opens, observations, taps, directional swipes and Back actions prepare and learn the map automatically. status reads saved metadata without observing the device; graph exports only saved screen/route metadata for visual inspection, without device observation, initialization or dependency installation; whereami locates and remembers a screen; go replays a saved route with optional expected selectors. When currentPlace.needsLabel is true, inspect the screen and call whereami with a short descriptive label before leaving it. This also renames existing numbered screens while preserving their IDs and routes. Never ask the user to name screens. Missing navigation dependencies are prepared locally on first use. Maps are local to this host/project/app unless an existing matching project map is present. Inspect every returned status; blocked/action_failed are not success. Never retry a lost or failed action automatically. cancel stops navigation before releasing input; completed actions are not undone. init is an optional advanced override, not required setup.",
+    description: "Navigate this chat's app using remembered screens and routes when Minimap tracking is enabled. The persistent Enable Minimap tracking setting defaults on; when disabled, Minimap is not used and saved maps are kept. Ordinary app opens, observations, taps, directional swipes and Back actions prepare and learn the map automatically. status reads saved metadata without observing the device; graph exports only saved screen/route metadata for visual inspection, without device observation, initialization or dependency installation; whereami locates and remembers a screen; go replays a saved route with optional expected selectors. When currentPlace.needsLabel is true, inspect the screen and call whereami with a short descriptive label before leaving it. This also renames existing numbered screens while preserving their IDs and routes. Never ask the user to name screens. Missing navigation dependencies are prepared locally on first use. Maps are local to this host/project/app unless an existing matching project map is present. Inspect every returned status; blocked/action_failed are not success. Never retry a lost or failed action automatically. cancel stops navigation before releasing input; completed actions are not undone. init is an optional advanced override, not required setup.",
     inputSchema: obj({
       action: { type: 'string', enum: ['status', 'graph', 'init', 'doctor', 'whereami', 'layout', 'go', 'tap', 'scroll', 'back', 'cancel'] },
       packageName: { type: 'string', description: 'Required only for advanced init; ordinary actions select the foreground app automatically.' },
@@ -364,7 +364,7 @@ export const TOOLS = [
     inputSchema: { type: 'object', additionalProperties: false },
     outputSchema: {
       type: 'object',
-      properties: { schema: { type: 'object' }, values: { type: 'object' }, layout: { type: 'array', items: { type: 'object' } } },
+      properties: { schema: { type: 'object' }, values: { type: 'object' }, revision: { type: 'integer', minimum: 0 }, layout: { type: 'array', items: { type: 'object' } } },
       required: ['schema', 'values'],
     },
     annotations: { title: 'Read plugin settings', ...readOnly },
@@ -380,6 +380,7 @@ export const TOOLS = [
           properties: {
             defaultAvd: { type: 'string' },
             keepCreatedDevices: { type: 'boolean' },
+            minimapEnabled: { type: 'boolean' },
             idleMinutes: { type: 'integer', minimum: 0, maximum: 1440 },
             videoQuality: { type: 'string', enum: ['Data saver', 'Balanced', 'High'] },
           },
@@ -389,7 +390,7 @@ export const TOOLS = [
       },
       ['set'],
     ),
-    outputSchema: { type: 'object', properties: { values: { type: 'object' } }, required: ['values'] },
+    outputSchema: { type: 'object', properties: { values: { type: 'object' }, revision: { type: 'integer', minimum: 0 } }, required: ['values'] },
     annotations: { title: 'Update plugin settings', ...action },
     _meta: appOnly,
   },
@@ -424,5 +425,6 @@ export const EMULATOR_INSTRUCTIONS =
   'A chat can pin multiple Android emulators and connected devices. Each device belongs exclusively to one chat. List emulator_devices and pass deviceId on actions when several are pinned; never guess the target. Use emulator_pin for connected phones; a move from another chat requires user confirmation in the panel. emulator_stop releases a physical pin without shutting down the phone. ' +
   'Start with emulator_status, then emulator_start (or emulator_create when no AVD fits). Successful startup returns the device panel automatically in supported hosts; do not follow it with emulator_panel. Use emulator_panel to reopen a closed panel or when the user asks to show it. Reuse the existing panel during testing. ' +
   'Use emulator_observe for the screen, elements, and foreground app together; emulator_ui_tree for lighter target lookup. Use emulator_scroll_to for off-screen targets and emulator_type for verified Unicode text entry. ' +
-  'Name screens as you inspect them: when navigation reports currentPlace.needsLabel, call emulator_navigate with action whereami and a short descriptive label based on fresh UI evidence. Replace numbered placeholders on revisit, preserve useful names, omit personal data, and never ask the user to manage screen names. ' +
+  'Minimap tracking defaults on and can be disabled in plugin settings or Device controls. When off, use ordinary device controls and inspection; do not re-enable tracking unless the user requests it. ' +
+  'When tracking is enabled, name screens as you inspect them: when navigation reports currentPlace.needsLabel, call emulator_navigate with action whereami and a short descriptive label based on fresh UI evidence. Replace numbered placeholders on revisit, preserve useful names, omit personal data, and never ask the user to manage screen names. ' +
   'When the panel or tools fail, use emulator_diagnostics before restarting anything. It works without a running helper and returns safe, chat-scoped diagnostics.';

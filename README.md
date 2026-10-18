@@ -27,7 +27,7 @@ Run, control, and test Android apps from Codex. Pin emulators and connected Andr
 - **Agent tools:** inspect screenshots and UI elements, target controls by name, enter text, and wait for screen changes.
 - **App testing:** install APKs, open apps and links, manage permissions, and change device conditions such as dark mode, font size, location, and battery level.
 - **Debugging and capture:** read Logcat, diagnose connection problems, capture screenshots, record video, and copy captures to the clipboard or add them to chat.
-- **Screen memory:** automatically remember screens and routes as the agent uses an app. Return to a saved destination from the Screen map panel.
+- **Optional screen memory:** enable Minimap tracking to remember screens and routes as the agent uses an app. Return to a saved destination from the Screen map panel, or turn tracking off to use ordinary device controls without Minimap.
 - **Saved screen graph:** inspect screens and directed routes in the Screen map's Graph view, with a complete route list and matrix. Graph export requires a separately configured graph-capable Minimap build; see the requirements below.
 
 The **Android Emulators** sidebar manages running devices and saved virtual devices. Multiple views of a device share its video encoder; hidden panels pause streaming while the emulator remains available to the agent.
@@ -38,7 +38,7 @@ The **Android Emulators** sidebar manages running devices and saved virtual devi
 - Android SDK Platform Tools on macOS or Linux. Virtual devices also need Android SDK Emulator and a system image. Android Studio can install these through SDK Manager.
 - Node.js 20 or newer. The plugin uses Codex's bundled runtime when available.
 
-Use an existing Android Virtual Device or ask the agent to create one. Set `ANDROID_HOME` if your SDK is installed in a custom location. Screen memory prepares its dependencies on first use and needs internet access for missing downloads.
+Use an existing Android Virtual Device or ask the agent to create one. Set `ANDROID_HOME` if your SDK is installed in a custom location. When Minimap tracking is enabled, screen memory prepares its dependencies on first use and needs internet access for missing downloads.
 
 For a physical device, enable USB debugging, connect it, and accept Android's debugging prompt. Select it from the panel's device dropdown. Unpinning releases the connection without shutting down the phone. Rotation, simulated location/battery, fold posture, and snapshots require an emulator.
 
@@ -69,6 +69,19 @@ codex plugin add android-emulator-plugin@mttmcknn
 Restart Codex to load the updated tools and panel resources. The repository marketplace installs the generated plugin directory from `main`; versioned ZIPs, checksums and source provenance are also available in [GitHub releases](https://github.com/mttmcknn/android-emulator-plugin/releases).
 
 ## Captures and screen memory
+
+**Enable Minimap tracking** is on by default. Change it in the plugin's settings
+under **Screen map**, or open the device panel's **Device controls** and use the
+same switch. The setting applies to all chats and pinned devices and survives
+restarts.
+
+When off, the plugin does not launch, probe, download, track, navigate or export
+graphs with Minimap. Ordinary emulator tools remain available, and UI inspection
+uses the existing ADB reader. The Screen map drawer shows that tracking is off.
+Turning it off cancels and waits for plugin-owned Minimap work; completed device
+actions are not undone or repeated. Saved maps and app associations are kept.
+Re-enable tracking to resume using them. The graph-capable CLI requirement above
+still applies, and unsupported graph export is reported explicitly.
 
 The camera and recording controls open a capture tray with **Copy**, **Add to chat**, and **Copy + add to chat** actions. The paperclip adds a screenshot to chat in one step.
 

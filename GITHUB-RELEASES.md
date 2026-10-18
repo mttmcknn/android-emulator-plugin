@@ -5,7 +5,7 @@ The [Package release workflow](.github/workflows/package-release.yml) runs only 
 From a clean tracked checkout with Node.js 20 or later and an existing local tag at `HEAD`, run:
 
 ```sh
-npm run package:submission -- --version 2026.10.18 --tag v2026.10.18
+npm run package:submission -- --version 2026.10.18+minimap.1 --tag v2026.10.18+minimap.1
 ```
 
 Use the version in `plugins/android-emulator-plugin/.codex-plugin/plugin.json`. The command requires `v<version>` to exist and resolve to the checked-out commit, runs the build and local tests, and creates:
@@ -37,7 +37,7 @@ The workflow checks out the dispatch commit by SHA and fetches existing tags. Th
 After a successful run, download the `android-emulator-plugin-<version>` Actions artifact. Extract its outer GitHub artifact ZIP to obtain the submission ZIP, checksum, report and release notes. On macOS, verify the submission ZIP from that directory with:
 
 ```sh
-shasum -a 256 -c android-emulator-plugin-2026.10.18.zip.sha256
+shasum -a 256 -c android-emulator-plugin-2026.10.18+minimap.1.zip.sha256
 ```
 
 The artifact is retained for 14 days, subject to repository policy. It wraps the completed submission ZIP, preserving the ZIP's internal hidden files and file modes. The optional draft job downloads that same run's artifact by its immutable artifact ID and fails on an artifact digest mismatch. [GitHub upload action](https://github.com/actions/upload-artifact/tree/v7.0.2), [GitHub download action](https://github.com/actions/download-artifact/tree/v8.0.2).

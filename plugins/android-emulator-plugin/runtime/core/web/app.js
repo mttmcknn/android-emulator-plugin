@@ -55,6 +55,13 @@ let minimapGraphViewer = null;
 let minimapGraphFingerprint = null;
 let minimapGraphSelection = null;
 let minimapView = 'graph';
+let minimapEnabled = true;
+let minimapSettingsUpdating = false;
+let minimapSettingsTarget = null;
+let minimapSettingsError = '';
+let minimapLifecycleId = 0;
+let minimapSettingsRevision = null;
+let minimapConfirmedEnabled = null;
 const pending = new Map();
 const pretty = (name) => name.replaceAll('_', ' ');
 
@@ -526,6 +533,7 @@ function onJson(msg) {
   else if (msg.t === 'status') renderStatus(msg);
   else if (msg.t === 'agent') showAgentEvent(msg);
   else if (msg.t === 'navigation') {
+    if (!minimapEnabled) return;
     if (msg.busy) {
       minimapRefreshId++;
       minimapGraphLoading = false;
@@ -775,6 +783,7 @@ function render() {
   // Reading or initializing a project map does not require a running device.
   $('minimap-toggle').disabled = !connected;
   $('more').disabled = !connected || !lastStatus?.emulator;
+  renderMinimapSetting();
   renderPostures();
   const emulator = lastStatus?.emulator;
   const live = emulator?.state === 'ready' && session && displayReady;
@@ -913,6 +922,7 @@ async function switchDevice(name) {
 
 function renderStatus(status) {
   lastStatus = status;
+  applyMinimapSettings(status.settings, status.settingsRevision);
   if (view !== 'device') return;
   const emulator = status.emulator;
   $('dot').className = `dot ${emulator?.state ?? ''}`;
@@ -957,6 +967,92 @@ function toast(text) {
 
 // ---- Screen map ---------------------------------------------------------------
 
+function renderMinimapSetting() {
+  $('minimap-enabled').checked = minimapEnabled;
+  $('minimap-enabled').disabled = !connected || minimapSettingsUpdating;
+  $('minimap-enable').disabled = !connected || minimapSettingsUpdating;
+  $('minimap-setting-status').textContent = minimapSettingsError || (minimapSettingsUpdating
+    ? minimapSettingsTarget ? 'Turning Minimap tracking on…' : 'Turning Minimap tracking off. Stopping active Minimap work…'
+    : minimapEnabled ? 'On. Remembers screens and routes as you use an app.' : 'Off. No Minimap activity; saved maps are kept.');
+  $('minimap-toggle').setAttribute('aria-label', minimapEnabled ? 'Screen map' : 'Screen map — Minimap tracking off');
+  $('minimap-toggle').dataset.tooltip = minimapEnabled ? 'Screen map' : 'Screen map · tracking off';
+}
+
+function setMinimapEnabled(enabled) {
+  const changed = minimapEnabled !== enabled;
+  minimapEnabled = enabled;
+  if (changed) {
+    minimapLifecycleId++;
+    minimapRefreshId++;
+    minimapBusyUI = false;
+    minimapCancelling = false;
+    minimapGraphLoading = false;
+    minimapMap = null;
+    minimapGraph = null;
+    minimapGraphSelection = null;
+    minimapGraphFingerprint = null;
+    minimapGraphViewer?.destroy();
+    minimapGraphViewer = null;
+    minimapGraphStatus = enabled
+      ? { status: 'uninitialized', message: 'No saved graph loaded yet.' }
+      : { status: 'disabled', message: 'Minimap tracking is off. Enable it to load saved graphs.' };
+    $('minimap-places').replaceChildren();
+    $('minimap-routes').replaceChildren();
+    setMinimapStatus(enabled ? 'Minimap tracking is on.' : 'Minimap tracking is off.');
+  }
+  renderMinimapSetting();
+  renderMinimap();
+  if (changed && enabled && connected && !minimapDrawer.hidden) refreshMinimap();
+}
+
+function applyMinimapSettings(settings, revision) {
+  if (typeof settings?.minimapEnabled !== 'boolean') return;
+  const versioned = Number.isSafeInteger(revision) && revision >= 0;
+  // Slow inventory reads and earlier save replies can arrive after newer saves.
+  // Once a revision is known, unversioned snapshots cannot safely supersede it.
+  if (minimapSettingsRevision !== null && (!versioned || revision < minimapSettingsRevision)) return;
+  if (versioned) minimapSettingsRevision = revision;
+  minimapConfirmedEnabled = settings.minimapEnabled;
+  // While disabling, an older status must not start another graph request.
+  if (minimapSettingsUpdating && minimapSettingsTarget === false && settings.minimapEnabled) return;
+  setMinimapEnabled(settings.minimapEnabled);
+}
+
+async function updateMinimapSetting(enabled) {
+  if (!connected || minimapSettingsUpdating) return;
+  let confirmed = false;
+  minimapSettingsUpdating = true;
+  minimapSettingsTarget = enabled;
+  minimapSettingsError = '';
+  // Suppress new work immediately while the helper drains existing work.
+  if (!enabled) setMinimapEnabled(false);
+  renderMinimapSetting();
+  try {
+    const result = await call('settings_update', { set: { minimapEnabled: enabled } });
+    const saved = result?.structuredContent?.values?.minimapEnabled;
+    if (typeof saved !== 'boolean') throw new Error('The helper did not confirm the Minimap setting. Reconnect to check its saved state.');
+    applyMinimapSettings(result.structuredContent.values, result.structuredContent.revision);
+    confirmed = true;
+  } catch (error) {
+    minimapSettingsError = error.message;
+    // A transport failure may happen after saving. Resume only from a confirmed
+    // setting; leaving the local UI off prevents new work during uncertainty.
+    try {
+      const result = await call('settings_read');
+      const saved = result?.structuredContent?.values?.minimapEnabled;
+      if (typeof saved === 'boolean') {
+        applyMinimapSettings(result.structuredContent.values, result.structuredContent.revision);
+        confirmed = true;
+      }
+    } catch { /* A later status update reconciles after reconnecting. */ }
+  } finally {
+    minimapSettingsUpdating = false;
+    minimapSettingsTarget = null;
+    if (confirmed && minimapConfirmedEnabled !== null) setMinimapEnabled(minimapConfirmedEnabled);
+    renderMinimapSetting();
+  }
+}
+
 function minimapStatusText(result, fallback) {
   const navigation = result?.structuredContent?.result;
   const status = typeof navigation?.status === 'string' && navigation.status
@@ -993,14 +1089,14 @@ function renderMinimapGraphSelection() {
   $('minimap-graph-selection').hidden = !place || minimapGraphLoading;
   $('minimap-graph-selected').textContent = place ? `Selected for inspection: ${place.label}` : '';
   // Inspection never sets currentPlace. Navigation remains a deliberate action.
-  $('minimap-graph-go').disabled = !connected || !place || minimapGraphLoading || minimapGraphStatus.status !== 'ok'
+  $('minimap-graph-go').disabled = !minimapEnabled || !connected || !place || minimapGraphLoading || minimapGraphStatus.status !== 'ok'
     || !knownPlace(minimapMap, place.id) || minimapMap?.availability?.available === false
     || Boolean(minimapMap?.error || minimapMap?.busy || minimapBusyUI)
     || lastStatus?.emulator?.state !== 'ready';
 }
 
 function renderMinimapGraph() {
-  const shown = minimapGraphStatus.status === 'ok' && minimapGraph && !minimapGraphLoading;
+  const shown = minimapEnabled && minimapGraphStatus.status === 'ok' && minimapGraph && !minimapGraphLoading;
   $('minimap-graph').hidden = !shown;
   $('minimap-graph-status').textContent = minimapGraphLoading ? 'Loading saved graph…' : minimapGraphStatus.message;
   if (shown) {
@@ -1019,6 +1115,7 @@ function renderMinimapGraph() {
 }
 
 function applyMinimapGraphResult(result) {
+  if (!minimapEnabled) return;
   const content = result?.structuredContent;
   const status = content?.graphStatus;
   minimapGraph = null;
@@ -1039,7 +1136,7 @@ function applyMinimapGraphResult(result) {
 }
 
 function renderMinimap() {
-  const map = minimapMap;
+  const map = minimapEnabled ? minimapMap : null;
   const availability = map?.availability;
   const available = Boolean(map && availability?.available !== false && !map.error);
   const initialized = Boolean(map?.initialized);
@@ -1052,12 +1149,13 @@ function renderMinimap() {
   const ready = lastStatus?.emulator?.state === 'ready';
   const hasCurrent = Boolean(current || map?.currentPlace);
 
-  $('minimap-summary').textContent = map ? `${map.projectName} · ${places.length} ${places.length === 1 ? 'screen' : 'screens'} · ${edges.length} ${edges.length === 1 ? 'route' : 'routes'}` : '';
+  $('minimap-summary').textContent = !minimapEnabled ? 'Tracking off · all chats' : map ? `${map.projectName} · ${places.length} ${places.length === 1 ? 'screen' : 'screens'} · ${edges.length} ${edges.length === 1 ? 'route' : 'routes'}` : '';
+  $('minimap-disabled').hidden = minimapEnabled;
   $('minimap-association').textContent = map?.packageName ? `Associated with ${map.packageName}` : '';
   $('minimap-association').hidden = !map?.packageName;
   $('minimap-current').textContent = currentText;
   $('minimap-current').classList.toggle('known', Boolean(current));
-  $('minimap-refresh').disabled = minimapBusyUI;
+  $('minimap-refresh').disabled = !minimapEnabled || minimapBusyUI;
   $('minimap-locate').disabled = !available || busy || !ready;
   $('minimap-cancel').hidden = !busy;
   $('minimap-cancel').disabled = minimapCancelling;
@@ -1066,6 +1164,7 @@ function renderMinimap() {
   $('minimap-routes-section').hidden = !edges.length;
   renderMinimapGraph();
 
+  if (!minimapEnabled) setMinimapStatus('Minimap tracking is off.');
   if (!map) return;
   if (!available || learning?.state === 'unavailable') {
     const reason = map.error || (typeof availability?.reason === 'string' && availability.reason.trim()
@@ -1111,6 +1210,7 @@ function renderMinimap() {
 }
 
 function applyMinimapResult(result, fallback) {
+  if (!minimapEnabled) return;
   const map = result?.structuredContent?.map;
   if (map) {
     if (minimapMap && (minimapMap.projectName !== map.projectName || minimapMap.packageName !== map.packageName)) {
@@ -1127,7 +1227,7 @@ function applyMinimapResult(result, fallback) {
 }
 
 async function refreshMinimap({ preserveStatus = false } = {}) {
-  if (minimapDrawer.hidden) return;
+  if (!minimapEnabled || minimapDrawer.hidden) return;
   const refreshId = ++minimapRefreshId;
   const previousStatus = preserveStatus ? $('minimap-status').textContent : null;
   minimapGraphLoading = true;
@@ -1136,7 +1236,7 @@ async function refreshMinimap({ preserveStatus = false } = {}) {
     call('emulator_navigate', { action: 'status' }),
     call('emulator_navigate', { action: 'graph' }),
   ]);
-  if (refreshId !== minimapRefreshId) return;
+  if (!minimapEnabled || refreshId !== minimapRefreshId) return;
   minimapGraphLoading = false;
   if (mapResult.status === 'fulfilled') applyMinimapResult(mapResult.value, 'Screen map refreshed.');
   else setMinimapStatus(mapResult.reason.message);
@@ -1151,27 +1251,31 @@ async function refreshMinimap({ preserveStatus = false } = {}) {
 }
 
 async function runMinimapAction(args, fallback) {
-  if (minimapBusyUI || minimapMap?.busy) return null;
+  if (!minimapEnabled || minimapBusyUI || minimapMap?.busy) return null;
+  const lifecycleId = minimapLifecycleId;
   minimapRefreshId++;
   minimapBusyUI = true;
   setMinimapStatus('Navigation is in progress.');
   renderMinimap();
   try {
     const result = await call('emulator_navigate', args);
+    if (!minimapEnabled || lifecycleId !== minimapLifecycleId) return null;
     applyMinimapResult(result, fallback);
     return result;
   } catch (error) {
-    setMinimapStatus(error.message);
+    if (minimapEnabled && lifecycleId === minimapLifecycleId) setMinimapStatus(error.message);
     return null;
   } finally {
-    minimapBusyUI = false;
-    renderMinimap();
-    if (!minimapDrawer.hidden) refreshMinimap({ preserveStatus: true });
+    if (minimapEnabled && lifecycleId === minimapLifecycleId) {
+      minimapBusyUI = false;
+      renderMinimap();
+      if (!minimapDrawer.hidden) refreshMinimap({ preserveStatus: true });
+    }
   }
 }
 
 function navigateToPlace(target) {
-  if (minimapBusyUI || minimapMap?.busy) return;
+  if (!minimapEnabled || minimapBusyUI || minimapMap?.busy) return;
   runMinimapAction({ action: 'go', target }, 'Navigation finished.');
 }
 
@@ -1180,7 +1284,8 @@ function openMinimap() {
   $('more').setAttribute('aria-pressed', 'false');
   minimapDrawer.hidden = false;
   $('minimap-toggle').setAttribute('aria-pressed', 'true');
-  setMinimapStatus('Loading screen map…');
+  setMinimapStatus(minimapEnabled ? 'Loading screen map…' : 'Minimap tracking is off.');
+  renderMinimap();
   refreshMinimap();
 }
 
@@ -1626,6 +1731,8 @@ $('minimap-toggle').addEventListener('click', () => {
   else closeMinimap();
 });
 $('minimap-close').addEventListener('click', closeMinimap);
+$('minimap-enabled').addEventListener('change', (event) => updateMinimapSetting(event.target.checked));
+$('minimap-enable').addEventListener('click', () => updateMinimapSetting(true));
 $('minimap-refresh').addEventListener('click', refreshMinimap);
 for (const name of ['graph', 'navigation']) {
   $(`minimap-${name}-tab`).addEventListener('click', () => setMinimapView(name));
@@ -1641,21 +1748,25 @@ $('minimap-graph-go').addEventListener('click', () => {
 });
 $('minimap-locate').addEventListener('click', () => runMinimapAction({ action: 'whereami' }, 'Current screen located.'));
 $('minimap-cancel').addEventListener('click', async () => {
-  if (minimapCancelling) return;
+  if (!minimapEnabled || minimapCancelling) return;
+  const lifecycleId = minimapLifecycleId;
   minimapRefreshId++;
   minimapBusyUI = true;
   minimapCancelling = true;
   renderMinimap();
   try {
     const result = await call('emulator_navigate', { action: 'cancel' });
+    if (!minimapEnabled || lifecycleId !== minimapLifecycleId) return;
     applyMinimapResult(result, 'Navigation stopped.');
   } catch (error) {
-    setMinimapStatus(error.message);
+    if (minimapEnabled && lifecycleId === minimapLifecycleId) setMinimapStatus(error.message);
   } finally {
-    minimapBusyUI = false;
-    minimapCancelling = false;
-    renderMinimap();
-    if (!minimapDrawer.hidden) refreshMinimap({ preserveStatus: true });
+    if (minimapEnabled && lifecycleId === minimapLifecycleId) {
+      minimapBusyUI = false;
+      minimapCancelling = false;
+      renderMinimap();
+      if (!minimapDrawer.hidden) refreshMinimap({ preserveStatus: true });
+    }
   }
 });
 $('snapshot-form').addEventListener('submit', (event) => {
@@ -1895,6 +2006,7 @@ function selectWorkspaceDevice(id) {
 function renderWorkspace(result) {
   if (view !== 'workspace') return;
   const status = result?.structuredContent ?? result;
+  applyMinimapSettings(status?.settings, status?.settingsRevision);
   if (status?.confirmationRequired) confirmDeviceTransfer(status.confirmationRequired);
   if (!Array.isArray(status?.devices)) return;
   const previous = workspaceStatus;

@@ -13,6 +13,7 @@ import { Backends } from './backends.mjs';
 import { screenGraphProjection } from './backends/minimap.mjs';
 import { typeIntoDevice } from './lib/text-input.mjs';
 import { NavigationMemory, appPackage } from './lib/navigation-memory.mjs';
+import { MINIMAP_DISABLED, NavigationControl } from './lib/navigation-control.mjs';
 import { errorDetails } from './lib/errors.mjs';
 import { leaseDiagnostics } from './lib/diagnostics.mjs';
 import { Captures } from './lib/captures.mjs';
@@ -50,7 +51,6 @@ export async function startDaemon({
 }) {
   if (!dir || !path.isAbsolute(dir)) throw new Error('An absolute emulator state directory is required.');
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-  const backends = new Backends({ dir, providers });
   const PLUGIN_VERSION = version;
   const HELPER_VERSION = helperVersion;
   const DEFAULT_PORT = requestedPort;
@@ -84,6 +84,9 @@ export async function startDaemon({
   const workspaceViewers = new Map();
   const transferring = new Set();
   const settings = new Settings(dir);
+  const navigationControl = new NavigationControl(settings.get('minimapEnabled') !== false);
+  const backends = new Backends({ dir, providers, navigationControl });
+  let settingsUpdates = Promise.resolve();
   let theme = appearance.read?.() ?? null;
   const recorders = new Map();
   let closed = false;
@@ -212,7 +215,8 @@ export async function startDaemon({
       inUseAvds: [...(await leases.inUseAvds?.() ?? [])],
       images: systemImages().map(({ id, label, tags }) => ({ id, label, tablet: tags.includes('tablet') })),
       createdByThisThread: pins.allIds(threadId).flatMap(id => leases.ownedAvds(id)),
-      settings: { keepCreatedDevices: settings.get('keepCreatedDevices') },
+      settings: { keepCreatedDevices: settings.get('keepCreatedDevices'), minimapEnabled: navigationControl.enabled },
+      settingsRevision: settings.revision,
       ...(request ? { confirmationRequired: { requestId: request[0], label: leases.get(request[1].id)?.label ?? 'Device', ownerTitle: info.get(request[1].from)?.title ?? 'Another chat' } } : {}),
     }, meta: { panels: Object.fromEntries(ids.map(id => [id, panelMeta(id)])) } };
   }
@@ -233,6 +237,8 @@ export async function startDaemon({
     const value = {
       display: { viewers: viewers.get(threadId)?.size ?? 0, streaming: mirrors.has(threadId) },
       backends: backends.selection(threadId),
+      settings: { keepCreatedDevices: settings.get('keepCreatedDevices'), minimapEnabled: navigationControl.enabled },
+      settingsRevision: settings.revision,
       foldable,
       emulator: publicLease(lease),
       avds: await leases.avds(),
@@ -245,7 +251,6 @@ export async function startDaemon({
       profiles: PROFILES.map(({ id, name, form }) => ({ id, name, form })),
       images: systemImages().map(({ id, label, tags }) => ({ id, label, tablet: tags.includes('tablet') })),
       recording: lease ? isRecording(lease.serial) : false,
-      settings: { keepCreatedDevices: settings.get('keepCreatedDevices') },
       theme,
     };
   }
@@ -330,10 +335,21 @@ export async function startDaemon({
     return preferred !== AUTOMATIC && avds.includes(preferred) ? preferred : undefined;
   }
 
+  function disabledNavigationMap() {
+    return { enabled: false, initialized: false, places: [], edges: [], currentPlace: null, busy: false,
+      availability: { available: false, disabled: true, reason: MINIMAP_DISABLED },
+      learning: { state: 'disabled', message: MINIMAP_DISABLED } };
+  }
+
   async function navigationMap(threadId, context) {
-    context ??= await navigation.context(threadId);
-    const map = await navigation.status(threadId, context);
-    return { ...map, busy: navigationRuns.has(threadId), currentPlace: lastPlaces.get(threadId)?.id ?? null };
+    if (!navigationControl.enabled) return disabledNavigationMap();
+    return navigationControl.run(async signal => {
+      context ??= await navigation.context(threadId, { signal });
+      signal.throwIfAborted();
+      const map = await navigation.status(threadId, context);
+      signal.throwIfAborted();
+      return { ...map, enabled: true, busy: navigationRuns.has(threadId), currentPlace: lastPlaces.get(threadId)?.id ?? null };
+    });
   }
 
   function rememberPlace(threadId, result) {
@@ -343,12 +359,13 @@ export async function startDaemon({
   }
 
   async function withNavigation(threadId, work) {
+    navigationControl.assertEnabled();
     const controller = new AbortController();
     const entry = { controller, done: null };
     navigationRuns.set(threadId, entry);
     invalidatePlace(threadId);
     navigationEvent(threadId, true);
-    entry.done = Promise.resolve().then(() => work(controller.signal));
+    entry.done = navigationControl.run(work, { signal: controller.signal });
     try { return await entry.done; }
     finally { navigationRuns.delete(threadId); navigationEvent(threadId, false); }
   }
@@ -356,7 +373,9 @@ export async function startDaemon({
   async function withGraph(context, signal, work) {
     // Shared project maps can be used by multiple chats. Serialize their writes,
     // including initialization, while keeping unrelated projects independent.
+    signal.throwIfAborted();
     const status = await context.navigator.status(context.cwd, context.packageName);
+    signal.throwIfAborted();
     const key = `${context.provider.id}:${status.root ?? context.cwd}`;
     const previous = graphRuns.get(key) ?? Promise.resolve();
     let started = false;
@@ -377,14 +396,17 @@ export async function startDaemon({
   }
 
   async function learnNavigation(threadId, device, args, { foregroundActivity, packageName } = {}) {
+    if (!navigationControl.enabled) return null;
     if (navigationRuns.has(threadId) || (activeOperations.get(threadId) ?? 0) > 1) return null;
     // Providers can omit automatic preparation; raw controls stay usable.
     if (!backends.get(threadId, 'navigation').create().prepare) return null;
     return withNavigation(threadId, async signal => {
       let dispatched = false;
       try {
-        let context = await navigation.context(threadId);
+        let context = await navigation.context(threadId, { signal });
+        signal.throwIfAborted();
         const activity = foregroundActivity === undefined ? await device.foregroundActivity() : foregroundActivity;
+        signal.throwIfAborted();
         const foreground = appPackage(activity);
         if (!foreground || (packageName && foreground !== packageName)) {
           navigation.report(threadId, 'waiting', 'Open your app to remember its screens.');
@@ -399,6 +421,7 @@ export async function startDaemon({
           dispatched = true;
           const result = await backends.measure(threadId, 'navigation', provider,
             () => navigator.execute({ ...args, cwd, packageName: foreground, serial: requireLease(threadId).serial, automatic: true }, { signal }));
+          signal.throwIfAborted();
           rememberPlace(threadId, result);
           return { text: navigationText(result), structuredContent: { navigation: result } };
         });
@@ -415,46 +438,60 @@ export async function startDaemon({
 
   const tools = {
     async emulator_navigate(threadId, args = {}) {
+      if (!navigationControl.enabled) {
+        if (args.action === 'graph') return { text: MINIMAP_DISABLED, structuredContent: { graph: null, graphStatus: { status: 'disabled', message: MINIMAP_DISABLED } } };
+        if (['status', 'cancel'].includes(args.action)) return { text: MINIMAP_DISABLED, structuredContent: { map: disabledNavigationMap() } };
+        throw new Error(MINIMAP_DISABLED);
+      }
       if (args.action === 'cancel') {
         await cancelNavigation(threadId);
         return { text: 'Navigation stopped. Inspect the device before continuing; completed actions are not undone.', structuredContent: { map: await navigationMap(threadId) } };
       }
       if (args.action === 'status') return { text: 'Saved screens and routes.', structuredContent: { map: await navigationMap(threadId) } };
       if (args.action === 'graph') {
-        const { cwd, packageName, navigator, provider } = await navigation.context(threadId);
-        let graph = null, status = 'unsupported';
-        try {
-          if (typeof navigator.graph === 'function') {
-            const result = await backends.measure(threadId, 'navigation', provider, () => navigator.graph({ cwd, packageName }));
-            status = result?.graphStatus?.status;
-            if (!['ok', 'uninitialized', 'unsupported', 'unavailable', 'error'].includes(status)) throw new Error('Invalid graph response.');
-            if (status === 'ok') graph = screenGraphProjection(result.graph);
-          }
-        } catch { status = 'error'; }
-        const message = {
-          ok: `${graph?.places.length ?? 0} saved screens and ${graph?.edges.length ?? 0} directed routes.`,
-          uninitialized: 'No saved screen graph exists for this project and app yet.',
-          unsupported: 'This navigation provider does not support graph export. Use a Minimap build with the graph command; saved navigation is unchanged.',
-          unavailable: 'Minimap graph export is unavailable. Install or configure a Minimap build with the graph command.',
-          error: 'The saved graph could not be exported safely. Ask the agent to inspect Minimap diagnostics.',
-        }[status];
-        return { text: message, structuredContent: { graph, graphStatus: { status, message } } };
+        return navigationControl.run(async signal => {
+          const { cwd, packageName, navigator, provider } = await navigation.context(threadId, { signal });
+          signal.throwIfAborted();
+          let graph = null, status = 'unsupported';
+          try {
+            if (typeof navigator.graph === 'function') {
+              const result = await backends.measure(threadId, 'navigation', provider, () => navigator.graph({ cwd, packageName }, { signal }));
+              signal.throwIfAborted();
+              status = result?.graphStatus?.status;
+              if (!['ok', 'uninitialized', 'unsupported', 'unavailable', 'error'].includes(status)) throw new Error('Invalid graph response.');
+              if (status === 'ok') graph = screenGraphProjection(result.graph);
+            }
+          } catch { status = 'error'; }
+          const message = {
+            ok: `${graph?.places.length ?? 0} saved screens and ${graph?.edges.length ?? 0} directed routes.`,
+            uninitialized: 'No saved screen graph exists for this project and app yet.',
+            unsupported: 'This navigation provider does not support graph export. Use a Minimap build with the graph command; saved navigation is unchanged.',
+            unavailable: 'Minimap graph export is unavailable. Install or configure a Minimap build with the graph command.',
+            error: 'The saved graph could not be exported safely. Ask the agent to inspect Minimap diagnostics.',
+          }[status];
+          return { text: message, structuredContent: { graph, graphStatus: { status, message } } };
+        });
       }
       if ((activeOperations.get(threadId) ?? 0) > 1) throw new Error('Finish this chat’s active operation before starting navigation.');
       return withNavigation(threadId, async signal => {
-        let context = await navigation.context(threadId);
+        let context = await navigation.context(threadId, { signal });
+        signal.throwIfAborted();
         const device = ['init', 'doctor'].includes(args.action) ? null : deviceFor(threadId, requireLease(threadId).serial);
         if (context.navigator.prepare) {
           const packageName = args.action === 'init' ? args.packageName
             : ['go', 'doctor'].includes(args.action) ? context.packageName || (await context.navigator.status(context.cwd)).packageName
             : appPackage(await device.foregroundActivity());
+          signal.throwIfAborted();
           if (!packageName) throw new Error('Open the app you want to use. Its screen map will be prepared automatically.');
           context = navigation.select(threadId, context, packageName);
           if (args.action === 'go') {
             const saved = await context.navigator.status(context.cwd, packageName);
+            signal.throwIfAborted();
             if (!saved.places.some(p => p.id === args.target || p.slug === args.target)) throw new Error('That screen is not in this app’s saved map. Refresh the screen map and choose a saved destination.');
             if (appPackage(await device.foregroundActivity()) !== packageName) {
+              signal.throwIfAborted();
               await device.open({ packageName });
+              signal.throwIfAborted();
               if (appPackage(await device.foregroundActivity()) !== packageName) throw new Error('The mapped app did not open. Inspect the device before navigating.');
             }
           }
@@ -463,12 +500,14 @@ export async function startDaemon({
           if (context.navigator.prepare && args.action !== 'doctor') await context.navigator.prepare(context, { signal });
           const { provider, navigator, cwd, packageName } = context;
           const availability = await backends.probe('navigation', provider);
+          signal.throwIfAborted();
           if (!availability.available) throw new Error(availability.reason);
           const serial = device ? requireLease(threadId).serial : undefined;
           const result = args.action === 'init' && navigator.prepare
             ? { status: 'ok', summary: 'Screen map ready.' }
             : await backends.measure(threadId, 'navigation', provider,
               () => navigator.execute({ ...args, cwd, packageName, serial, automatic: args.label === undefined }, { signal }));
+          signal.throwIfAborted();
           rememberPlace(threadId, result);
           const map = await navigationMap(threadId, context);
           map.busy = false;
@@ -600,16 +639,28 @@ export async function startDaemon({
     },
 
     async settings_update(_threadId, { set }) {
-      const qualityChanged = set?.videoQuality !== undefined && set.videoQuality !== settings.get('videoQuality');
-      const values = settings.update(set);
-      if (qualityChanged) {
-        for (const threadId of [...mirrors.keys()]) {
-          stopMirror(threadId);
-          attachViewers(threadId);
+      const update = settingsUpdates.catch(() => {}).then(async () => {
+        const qualityChanged = set?.videoQuality !== undefined && set.videoQuality !== settings.get('videoQuality');
+        const minimapChanged = set?.minimapEnabled !== undefined && set.minimapEnabled !== settings.get('minimapEnabled');
+        const values = settings.update(set);
+        if (minimapChanged) {
+          if (values.minimapEnabled) navigationControl.enable();
+          else await navigationControl.disable();
+          lastPlaces.clear();
+          navigation.learning.clear();
         }
-      }
-      for (const threadId of viewers.keys()) pushStatus(threadId);
-      return { text: 'Settings saved.', structuredContent: { values } };
+        if (qualityChanged) {
+          for (const threadId of [...mirrors.keys()]) {
+            stopMirror(threadId);
+            attachViewers(threadId);
+          }
+        }
+        for (const threadId of viewers.keys()) pushStatus(threadId);
+        for (const threadId of workspaceViewers.keys()) pushWorkspace(threadId);
+        return { text: 'Settings saved.', structuredContent: { values, revision: settings.revision } };
+      });
+      settingsUpdates = update;
+      return update;
     },
 
     async emulator_apk(threadId, { file, action = 'info', resourcePath, deviceId }) {
@@ -1128,6 +1179,8 @@ export async function startDaemon({
       } finally { transferring.delete(id); }
     },
     emulator_navigate: (threadId, args) => tools.emulator_navigate(threadId, args),
+    settings_read: () => tools.settings_read(),
+    settings_update: (threadId, args) => tools.settings_update(threadId, args),
     emulator_start: (threadId, args) => tools.emulator_start(threadId, args),
     emulator_stop: (threadId, args) => tools.emulator_stop(threadId, args),
     emulator_create: (threadId, args) => tools.emulator_create(threadId, args),
@@ -1264,6 +1317,7 @@ export async function startDaemon({
         return reply(viewer, message.id, () => {
           if (!Object.hasOwn(paneActions, message.tool)) throw new Error(`Unsupported pane action ${message.tool}`);
           assertPanelAction(threadId, message.tool);
+          if (['settings_read', 'settings_update'].includes(message.tool)) return paneActions[message.tool](threadId, message.args ?? {});
           if (['emulator_start', 'emulator_create', 'emulator_pin', 'emulator_devices'].includes(message.tool)) return dispatchTool(pins.owner(threadId), message.tool, message.args ?? {});
           if (message.tool === 'emulator_transfer') throw new Error('Confirm device moves in the device workspace.');
           return operation(threadId, () => paneActions[message.tool](threadId, message.args ?? {}), message.tool, message.args);
@@ -1474,7 +1528,7 @@ export async function startDaemon({
     for (const connection of inputConnections.values()) connection.stop();
     for (const threadId of mirrors.keys()) stopMirror(threadId);
     for (const threadId of Object.keys(leases.leases)) recorders.forEach(recorder => recorder.discardThread(threadId));
-    const stoppedNavigation = Promise.allSettled([...navigationRuns.keys()].map(cancelNavigation));
+    const stoppedNavigation = Promise.allSettled([navigationControl.disable(), ...[...navigationRuns.keys()].map(cancelNavigation)]);
     closing = Promise.all([stoppedNavigation, new Promise(resolve => server.close(resolve))]).then(() => {});
     server.closeAllConnections();
     return closing;

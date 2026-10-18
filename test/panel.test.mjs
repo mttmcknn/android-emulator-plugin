@@ -206,7 +206,7 @@ test('render disables device controls while reconnecting and restores them on co
     let connected = false;
     const lastStatus = { emulator: { state: 'ready' } }, device = {}, launcher = {};
     const session = null, displayReady = false, displayError = '';
-    function showMessage() {} function layout() {} function renderPostures() {}
+    function showMessage() {} function layout() {} function renderPostures() {} function renderMinimapSetting() {}
     ${rendering}
     render();
   `, context);

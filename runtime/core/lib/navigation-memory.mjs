@@ -16,8 +16,9 @@ export class NavigationMemory {
     catch (error) { if (error.code !== 'ENOENT') throw error; this.apps = new Map(); }
   }
 
-  async context(threadId) {
+  async context(threadId, { signal } = {}) {
     const session = (await this.readSessions([threadId])).get(threadId);
+    signal?.throwIfAborted();
     if (!session?.cwd || session.state !== 'active') throw new Error('Open this chat in an app project to remember screens.');
     const saved = this.apps.get(threadId);
     if (saved && saved.cwd !== session.cwd) this.learning.delete(threadId);

@@ -21,6 +21,60 @@ test('settings validate values, persist, and fall back when the default device i
   for (const name of Object.keys(page.schema.properties)) assert.ok(name in page.values, `missing value for ${name}`);
 });
 
+test('Minimap tracking defaults on, persists off across restarts, and is discoverable in native settings', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aep-minimap-settings-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const settings = new Settings(dir);
+  assert.equal(settings.get('minimapEnabled'), true);
+  assert.equal(settings.revision, 0);
+  assert.throws(() => settings.update({ minimapEnabled: 'false' }), /must be a boolean/);
+  assert.equal(settings.get('minimapEnabled'), true);
+  settings.update({ minimapEnabled: false });
+  const saved = new Settings(dir);
+  assert.equal(saved.get('minimapEnabled'), false);
+  assert.equal(saved.revision, 1);
+  const page = saved.describe([]);
+  assert.equal(page.values.minimapEnabled, false);
+  assert.equal(page.revision, 1);
+  assert.equal(Object.hasOwn(page.values, '_revision'), false);
+  assert.equal(page.schema.properties.minimapEnabled.type, 'boolean');
+  assert.equal(page.schema.properties.minimapEnabled.title, 'Enable Minimap tracking');
+  assert.ok(page.layout.some(group => group.items.some(item => item.property === 'minimapEnabled')));
+  saved.update({ minimapEnabled: true });
+  assert.equal(new Settings(dir).get('minimapEnabled'), true);
+  assert.equal(new Settings(dir).revision, 2);
+  fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ idleMinutes: 0 }));
+  assert.equal(new Settings(dir).get('minimapEnabled'), true, 'existing settings retain the enabled default');
+  assert.equal(new Settings(dir).revision, 0);
+});
+
+test('failed settings persistence leaves in-memory values unchanged and no temporary files', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aep-failed-settings-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const settings = new Settings(dir);
+  fs.mkdirSync(path.join(dir, 'settings.json'));
+  assert.throws(() => settings.update({ minimapEnabled: false }));
+  assert.equal(settings.get('minimapEnabled'), true);
+  assert.equal(settings.revision, 0);
+  assert.deepEqual(fs.readdirSync(dir), ['settings.json']);
+});
+
+test('settings revisions accept only safe nonnegative integers and cannot be edited as preferences', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aep-settings-revisions-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  for (const revision of [-1, 1.5, '2', null, Number.MAX_SAFE_INTEGER + 1]) {
+    fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ _revision: revision }));
+    assert.equal(new Settings(dir).revision, 0);
+  }
+  fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ _revision: 9 }));
+  const settings = new Settings(dir);
+  assert.equal(settings.revision, 9);
+  assert.throws(() => settings.update({ _revision: 0 }), /Unknown setting/);
+  assert.equal(settings.revision, 9);
+  settings.update({ minimapEnabled: false });
+  assert.equal(new Settings(dir).revision, 10);
+});
+
 test('aapt2 badging parses into the APK viewer facts', () => {
   const info = parseBadging(
     "package: name='com.example.app' versionCode='42' versionName='1.2.3' platformBuildVersionName='15'\n" +

@@ -1,6 +1,7 @@
 // User preferences, shown on the host's settings page and used by the helper and panel.
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 export const VIDEO_QUALITY = {
   'Data saver': { maxSize: 1280, bitRate: 4_000_000, maxFps: 30 },
@@ -15,6 +16,7 @@ const DEFAULTS = {
   keepCreatedDevices: false,
   idleMinutes: 60,
   videoQuality: 'Balanced',
+  minimapEnabled: true,
 };
 
 export class Settings {
@@ -23,8 +25,10 @@ export class Settings {
     try {
       const saved = JSON.parse(fs.readFileSync(this.file, 'utf8'));
       this.values = Object.fromEntries(Object.entries(DEFAULTS).map(([name, value]) => [name, saved[name] ?? value]));
+      this.revision = Number.isSafeInteger(saved._revision) && saved._revision >= 0 ? saved._revision : 0;
     } catch {
       this.values = { ...DEFAULTS };
+      this.revision = 0;
     }
   }
 
@@ -59,12 +63,18 @@ export class Settings {
         description: 'Higher quality uses more CPU while the panel is open.',
         enum: Object.keys(VIDEO_QUALITY),
       },
+      minimapEnabled: {
+        type: 'boolean',
+        title: 'Enable Minimap tracking',
+        description: 'Remember screens and routes and enable screen map navigation for all chats. When off, the plugin does not use Minimap. Existing saved maps are kept.',
+      },
     };
     const values = { ...this.values };
     if (!properties.defaultAvd.enum.includes(values.defaultAvd)) values.defaultAvd = AUTOMATIC;
     return {
       schema: { type: 'object', properties },
       values,
+      revision: this.revision,
       layout: [
         {
           kind: 'group',
@@ -81,6 +91,11 @@ export class Settings {
           title: 'Display',
           items: [{ kind: 'property', property: 'videoQuality' }],
         },
+        {
+          kind: 'group',
+          title: 'Screen map',
+          items: [{ kind: 'property', property: 'minimapEnabled' }],
+        },
       ],
     };
   }
@@ -94,8 +109,17 @@ export class Settings {
       if (name === 'videoQuality' && !VIDEO_QUALITY[value]) throw new Error(`videoQuality must be one of ${Object.keys(VIDEO_QUALITY).join(', ')}.`);
       next[name] = value;
     }
+    const revision = this.revision + 1;
+    if (!Number.isSafeInteger(revision)) throw new Error('Settings revision limit reached. Settings were not changed.');
+    const temporary = `${this.file}.${randomUUID()}.tmp`;
+    try {
+      fs.writeFileSync(temporary, JSON.stringify({ ...next, _revision: revision }, null, 2), { mode: 0o600, flag: 'wx' });
+      fs.renameSync(temporary, this.file);
+    } finally {
+      fs.rmSync(temporary, { force: true });
+    }
     this.values = next;
-    fs.writeFileSync(this.file, JSON.stringify(next, null, 2), { mode: 0o600 });
+    this.revision = revision;
     return next;
   }
 }

@@ -6,6 +6,18 @@ import { Recorder } from './lib/recorder.mjs';
 import { createMinimapBackend } from './backends/minimap.mjs';
 import { createAndroidCliCapture } from './backends/android-cli.mjs';
 import { SCRCPY_VERSION } from './lib/control.mjs';
+import { MINIMAP_DISABLED, NavigationControl } from './lib/navigation-control.mjs';
+
+function lazyMinimap(dir) {
+  let backend;
+  const get = () => backend ??= createMinimapBackend({ stateDir: dir });
+  return {
+    id: 'minimap', label: 'Minimap navigation memory', version: '0.2.x',
+    create: () => get().create(),
+    probe: options => get().probe(options),
+    uiNodes: (...args) => get().uiNodes(...args),
+  };
+}
 
 // Factories describe implementations, not sessions. All mutable resources belong
 // to the caller that creates them. No dynamic imports or executable paths from tools.
@@ -17,7 +29,7 @@ export function builtinBackends({ dir } = {}) {
     ],
     device: [{ id: 'adb', label: 'ADB device operations', version: 'sdk', create: (serial, options) => new Device(serial, options) }],
     connection: [{ id: 'scrcpy', label: 'scrcpy H.264 and input', version: SCRCPY_VERSION, create: options => new Mirror(options) }],
-    navigation: [createMinimapBackend({ stateDir: dir })],
+    navigation: [lazyMinimap(dir)],
     recording: [{ id: 'screenrecord', label: 'Android screenrecord', version: 'device', create: dir => new Recorder(dir) }],
   };
 }
@@ -27,7 +39,8 @@ const ID = /^[a-z][a-z0-9-]{0,63}$/;
 const round = value => Math.round(value * 100) / 100;
 
 export class Backends {
-  constructor({ dir, providers = {} }) {
+  constructor({ dir, providers = {}, navigationControl = new NavigationControl() }) {
+    this.navigationControl = navigationControl;
     this.catalog = new Map();
     for (const [component, builtins] of Object.entries(builtinBackends({ dir }))) {
       const entries = new Map();
@@ -55,13 +68,34 @@ export class Backends {
   get(session, component, id = this.selection(session)[component]) {
     const backend = this.catalog.get(component)?.get(id);
     if (!backend) throw new Error(`Unknown ${component} backend "${id}". List available backends and select one explicitly.`);
-    return { ...backend, version: this.versions.get(`${component}:${id}`) ?? backend.version };
+    const result = { ...backend, version: this.versions.get(`${component}:${id}`) ?? backend.version };
+    if (component !== 'navigation') return result;
+    const control = this.navigationControl;
+    return { ...result,
+      create() {
+        control.assertEnabled();
+        const navigator = backend.create();
+        return Object.fromEntries(Object.entries(navigator).map(([name, value]) => [name, typeof value !== 'function' ? value : (...args) => {
+          const options = ['prepare', 'execute', 'graph'].includes(name) ? args[1] ?? {} : {};
+          return control.run(signal => value.apply(navigator,
+            ['prepare', 'execute', 'graph'].includes(name) ? [args[0], { ...options, signal }] : args), options);
+        }]));
+      },
+      ...(backend.uiNodes ? { async uiNodes(serial, options = {}) {
+        if (!control.enabled) return null;
+        try { return await control.run(signal => backend.uiNodes(serial, { ...options, signal }), options); }
+        catch (error) { if (!control.enabled) return null; throw error; }
+      } } : {}),
+    };
   }
 
   selection(session) { return { ...DEFAULT_BACKENDS, ...this.selections.get(session) }; }
 
   async probe(component, backend) {
-    const result = await backend.probe?.() ?? { available: true };
+    if (component === 'navigation' && !this.navigationControl.enabled) return { available: false, disabled: true, reason: MINIMAP_DISABLED };
+    const result = component === 'navigation'
+      ? await this.navigationControl.run(signal => backend.probe?.({ signal }) ?? { available: true })
+      : await backend.probe?.() ?? { available: true };
     if (result.available && result.version) this.versions.set(`${component}:${backend.id}`, result.version);
     return result;
   }

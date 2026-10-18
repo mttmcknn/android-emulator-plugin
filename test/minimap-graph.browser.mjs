@@ -19,12 +19,17 @@ assert.ok(!resource.text.includes('href="/static/'), 'Resource must inline rende
 
 const bootstrap = `
 globalThis.fixtureCalls = []; globalThis.fixtureContextListeners = []; globalThis.fixtureWorkspace = new URLSearchParams(location.search).has('workspace');
+const fixtureSettings = {minimapEnabled:localStorage.getItem('fixtureMinimapEnabled')!=='false'};
+let fixtureRevision = Number(localStorage.getItem('fixtureSettingsRevision')??0);
 const fixtureGraph = {schema_version:'minimap.screen-graph.v1',places:[{id:'home',label:'Home',slug:'home'},{id:'detail',label:'Detail',slug:'detail'},{id:'settings',label:'Settings',slug:'settings'}],edges:[{id:'open',from:'home',to:'detail',steps:1,requiresHistory:false},{id:'settings',from:'home',to:'settings',steps:2,requiresHistory:false},{id:'back',from:'detail',to:'home',steps:1,requiresHistory:true}]};
 const fixtureMap = {initialized:true,projectName:'Synthetic browser QA',packageName:'example.fixture',places:fixtureGraph.places,edges:fixtureGraph.edges,currentPlace:'home'};
 const fixtureDevice = id => ({id,label:'Test device '+id,serial:'fixture-'+id,state:'ready',kind:'emulator'});
-const fixtureInventory = {structuredContent:{devices:['a','b'].map(fixtureDevice),connectedDevices:[],avds:[]},_meta:{panels:Object.fromEntries(['a','b'].map(id=>[id,{channel:{thread:id,key:'fixture-key'}}])),panel:{workspace:true,channel:{thread:'workspace',key:'fixture-key'}}}};
+const fixtureInventory = {structuredContent:{devices:['a','b'].map(fixtureDevice),connectedDevices:[],avds:[],settings:fixtureSettings,settingsRevision:fixtureRevision},_meta:{panels:Object.fromEntries(['a','b'].map(id=>[id,{channel:{thread:id,key:'fixture-key'}}])),panel:{workspace:true,channel:{thread:'workspace',key:'fixture-key'}}}};
 const fixtureQueues = new Map(), fixtureStarted = new Set();
 const fixtureQueue = thread => {if(!fixtureQueues.has(thread))fixtureQueues.set(thread,[]);return fixtureQueues.get(thread);};
+const fixtureStatus = thread => thread==='workspace'?{t:'workspace',...fixtureInventory}:{t:'status',emulator:{state:'ready',kind:'emulator',avd:'Test device',serial:'fixture'},capabilities:{},avds:[],createdByThisThread:[],profiles:[],images:[],settings:{...fixtureSettings},settingsRevision:fixtureRevision};
+globalThis.fixtureNavigationEvent = () => {for(const thread of fixtureStarted)fixtureQueue(thread).push({j:{t:'navigation',busy:false}});};
+globalThis.fixtureStaleStatus = () => fixtureQueue('single').push({j:{...fixtureStatus('single'),settings:{minimapEnabled:true},settingsRevision:fixtureRevision-1}});
 globalThis.emulatorHost = {embedded:true,label:'Browser QA host',
  initialize:async()=>({capabilities:{},context:{theme:'light'}}),onContextChange:callback=>fixtureContextListeners.push(callback),onTeardown(){},onVisibilityChange(){},
  firstToolResult:async()=>fixtureWorkspace?fixtureInventory:{_meta:{panel:{channel:{thread:'single',key:'fixture-key'}}}},
@@ -37,6 +42,16 @@ globalThis.emulatorHost = {embedded:true,label:'Browser QA host',
      if(message.t==='call'){
        let result={};
        if(message.tool==='emulator_devices')result=fixtureInventory;
+       if(message.tool==='settings_update'){
+         fixtureSettings.minimapEnabled=message.args.set.minimapEnabled;
+         fixtureRevision++;
+         localStorage.setItem('fixtureMinimapEnabled',String(fixtureSettings.minimapEnabled));
+         localStorage.setItem('fixtureSettingsRevision',String(fixtureRevision));
+         fixtureInventory.structuredContent.settingsRevision=fixtureRevision;
+         for(const thread of fixtureStarted)fixtureQueue(thread).push({j:fixtureStatus(thread)});
+         result={structuredContent:{values:{...fixtureSettings},revision:fixtureRevision}};
+       }
+       if(message.tool==='settings_read')result={structuredContent:{values:{...fixtureSettings},revision:fixtureRevision}};
        if(message.tool==='emulator_navigate')result=message.args.action==='graph'?{structuredContent:{graph:fixtureGraph,graphStatus:{status:'ok',message:'Saved graph (synthetic test fixture).'}}}:{structuredContent:{map:fixtureMap}};
        queue.push({j:{t:'result',id:message.id,ok:true,result}});
      }
@@ -45,7 +60,7 @@ globalThis.emulatorHost = {embedded:true,label:'Browser QA host',
    await new Promise(resolve=>setTimeout(resolve,20));
    if(!fixtureStarted.has(args.thread)){
      fixtureStarted.add(args.thread);
-     queue.unshift({j:args.thread==='workspace'?{t:'workspace',...fixtureInventory}:{t:'status',emulator:{state:'ready',kind:'emulator',avd:'Test device',serial:'fixture'},capabilities:{},avds:[],createdByThisThread:[],profiles:[],images:[]}});
+     queue.unshift({j:fixtureStatus(args.thread)});
    }
    return {structuredContent:{messages:queue.splice(0)}};
  }
@@ -110,6 +125,33 @@ try {
   assert.ok(narrow.body <= narrow.viewport && narrow.graph > narrow.local);
   report.narrow = narrow; report.checks.push('tab keyboard semantics; narrow graph local scrolling');
   await page.setViewportSize({ width: 1680, height: 1100 });
+  await page.locator('#more').click();
+  await page.locator('#minimap-enabled').uncheck();
+  await page.waitForFunction(() => !document.getElementById('minimap-enabled').disabled);
+  assert.match(await page.locator('#minimap-setting-status').textContent(), /Off/);
+  await page.locator('#drawer').screenshot({ path: path.join(out, 'minimap-tracking-toggle-off.png') });
+  const callsOff = await page.evaluate(() => fixtureCalls.flatMap(call => call.args.send ?? []).filter(message => message.tool === 'emulator_navigate').length);
+  await page.locator('#minimap-toggle').click();
+  assert.equal(await page.locator('#minimap-disabled').isVisible(), true);
+  assert.equal(await page.locator('#minimap-refresh').isDisabled(), true);
+  assert.equal(await page.locator('#minimap-locate').isDisabled(), true);
+  assert.equal(await page.locator('#minimap-graph-go').isDisabled(), true);
+  assert.equal(await page.locator('#minimap-graph .graph-node').count(), 0);
+  await page.evaluate(() => fixtureNavigationEvent());
+  await page.evaluate(() => fixtureStaleStatus());
+  await page.waitForFunction(() => fixtureQueues.get('single').length === 0);
+  assert.equal(await page.locator('#minimap-enabled').isChecked(), false, 'a delayed pre-disable status cannot roll back the saved setting');
+  assert.equal(await page.evaluate(() => fixtureCalls.flatMap(call => call.args.send ?? []).filter(message => message.tool === 'emulator_navigate').length), callsOff);
+  await page.locator('#minimap-drawer').screenshot({ path: path.join(out, 'minimap-tracking-off.png') });
+  await page.reload();
+  await page.waitForFunction(() => !document.getElementById('minimap-toggle').disabled);
+  await page.locator('#minimap-toggle').click();
+  assert.equal(await page.locator('#minimap-disabled').isVisible(), true);
+  assert.equal(await page.evaluate(() => fixtureCalls.flatMap(call => call.args.send ?? []).filter(message => message.tool === 'emulator_navigate').length), 0);
+  assert.equal(await page.locator('#more').isEnabled(), true, 'normal device controls remain enabled');
+  await page.locator('#minimap-enable').click();
+  await page.locator('#minimap-graph .graph-node').first().waitFor();
+  report.checks.push('persistent toggle in Device controls; off map, navigation events and delayed stale statuses send zero Minimap calls; saved graph returns on enable');
   await page.goto(url + '?workspace=1');
   await page.waitForFunction(() => document.querySelectorAll('.device-frame').length === 1);
   await page.locator('#workspace-compare').click();
@@ -130,6 +172,15 @@ try {
   await page.waitForFunction(() => fixtureCalls.some(call => call.args.thread === 'a' && call.args.send?.some(message => message.args?.action === 'go' && message.args.target === 'detail')));
   assert.equal(await page.evaluate(() => fixtureCalls.filter(call => call.args.thread === 'b').flatMap(call => call.args.send ?? []).filter(message => message.args?.action === 'go').length), 0);
   report.checks.push('two actual blob child frames; fixed device channels and independent selections; forwarded host context');
+  await a.locator('#more').click();
+  await a.locator('#minimap-enabled').uncheck();
+  await b.locator('#minimap-disabled').waitFor();
+  assert.equal(await b.locator('#minimap-enabled').isChecked(), false);
+  assert.equal(await b.locator('#minimap-graph .graph-node').count(), 0);
+  await b.locator('#minimap-enable').click();
+  await b.locator('#minimap-graph .graph-node').first().waitFor();
+  assert.equal(await a.locator('#minimap-enabled').isChecked(), true);
+  report.checks.push('global settings status updates both device frames and clears other-frame graphs immediately');
   assert.deepEqual(errors, []); assert.ok(requests.every(request => request.startsWith(url) || request.startsWith('blob:')));
   report.pageErrors = errors; report.externalRequests = []; report.svg = style; report.passed = true;
   fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2) + '\n');

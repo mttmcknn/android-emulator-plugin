@@ -1,8 +1,20 @@
 # Release license audit
 
-Updated on 2026-10-18 for plugin `2026.10.18`, incorporating the graph renderer/integration at `b516a788d451550a0b219af2c077a0074be595ec` and upstream badge commit `2a5f4fe6a56fd8f2d4e2ce9d34486f92831abf07`. The prior `2026.10.9` reconciliation and original dependency/binary inspections from 2026-10-08 are retained below with their dates and immutable evidence. This is an engineering inventory and compliance review, not a legal guarantee. The project's existing Apache-2.0 license is retained; third-party code and artwork retain their own terms.
+Updated on 2026-10-18 for plugin `2026.10.18+minimap.1`, adding the persistent Minimap control to the previous release incorporating the graph renderer/integration at `b516a788d451550a0b219af2c077a0074be595ec` and upstream badge commit `2a5f4fe6a56fd8f2d4e2ce9d34486f92831abf07`. The prior `2026.10.9` reconciliation and original dependency/binary inspections from 2026-10-08 are retained below with their dates and immutable evidence. This is an engineering inventory and compliance review, not a legal guarantee. The project's existing Apache-2.0 license is retained; third-party code and artwork retain their own terms.
 
-## Current reconciliation observations (2026.10.18)
+## Current reconciliation observations (2026.10.18+minimap.1)
+
+- This same-day follow-up adds first-party settings, lifecycle controls, UI and
+  tests. The graph renderer, scrcpy server, screenshots, logos, external dependency
+  URLs/hashes and third-party notices remain unchanged from `v2026.10.18`.
+- The default remains enabled. Disabling tracking prevents navigation dependency
+  setup and Minimap use while retaining saved data; it does not uninstall or
+  redistribute any external tool. No agreement is accepted by the toggle.
+- The earlier inspection evidence and limits below remain applicable. This
+  release introduces no new copied code, binary, font or artwork. Its package
+  report and release verification record identify the exact new source/artifact.
+
+## Prior reconciliation observations (2026.10.18)
 
 - The new shipped source is the dependency-free Minimap graph renderer and first-party panel/backend integration. Renderer JavaScript and CSS remain byte-identical to local Minimap revision `7484edfa97cc6248d52a96342799906f72a74bbb`; its Apache-2.0 license matches the retained root license, and NOTICE identifies the source and copyright.
 - The scrcpy server, screenshots, logos, managed dependency URLs/hashes, and third-party license files are unchanged from `v2026.10.9`. No new binary, Node/browser package, font or artwork is introduced. The README's Android Weekly badge is a remote documentation image, not a packaged binary or plugin asset.

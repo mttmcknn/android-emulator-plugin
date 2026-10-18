@@ -8,6 +8,46 @@ dates. Versions 2026.10.7 and 2026.10.8 describe development source history; nei
 had a published GitHub release. Available history starts at this repository's
 initial commit; no history from a retired or separate repository is inferred.
 
+## [2026.10.18+minimap.1]
+
+Same-day follow-up to 2026.10.18 with a distinct version, tag and package.
+
+### Added
+
+- Add **Enable Minimap tracking** to the plugin's native settings under Screen
+  map and to the device panel's Device controls. The global setting defaults on,
+  persists across helper restarts, and applies to every chat and pinned device.
+- Show an explicit off state in Screen map, with an Enable button. Disabling
+  preserves saved maps and app associations; enabling restores existing tracking
+  and navigation without initializing or downloading anything by itself.
+
+### Changed and fixed
+
+- When tracking is off, bypass Minimap creation, probing, dependency setup,
+  automatic learning, saved navigation and graph export. Ordinary UI inspection
+  uses the existing ADB reader instead of the navigation dependency path.
+- Cancel and wait for plugin-owned navigation, graph reads, dependency setup,
+  probes and inspection processes when disabling. Serialize settings updates so
+  re-enabling cannot overtake cleanup, and reject stale operation results.
+- Preserve compatibility with early Node 20 releases when combining cancellation
+  signals, and release listeners when operations finish.
+- Save settings atomically and use persisted revisions to prevent delayed panel
+  status messages from overwriting a newer confirmed setting.
+- Keep ordinary emulator control, capture and device settings available while
+  tracking is off. An interrupted navigation action is never replayed as raw input.
+
+### Upgrade requirements and limits
+
+- Refresh the marketplace, add the plugin again, and restart Codex. Existing
+  installations retain tracking enabled until the user turns it off; no map
+  migration is required. The earlier v2026.10.18 release remains unchanged.
+- Enabled graph export still requires a separately configured Minimap 0.2.x
+  build with the `graph` command. Managed Minimap 0.2.1 supports saved navigation
+  and reports graph export as unsupported. This release does not update Minimap
+  or include its separate replay performance changes.
+- No new binary dependency, third-party artwork, agreement acceptance, Registry
+  submission or remote CI run is part of this release.
+
 ## [2026.10.18]
 
 Includes the saved graph panel and capability-detection fixes from

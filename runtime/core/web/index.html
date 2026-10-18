@@ -123,6 +123,13 @@
                 <span class="name">Device controls</span>
                 <button type="button" class="icon-button" data-close data-tooltip="Close device controls" aria-label="Close device controls"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
               </div>
+              <section class="group" aria-labelledby="minimap-setting-label">
+                <div id="minimap-setting-label" class="label">Screen map · all chats</div>
+                <div class="panel">
+                  <label class="row" for="minimap-enabled"><span>Enable Minimap tracking</span><input id="minimap-enabled" type="checkbox" class="switch" checked aria-describedby="minimap-setting-status" /></label>
+                </div>
+                <p id="minimap-setting-status" class="muted" role="status">On. Remembers screens and routes as you use an app.</p>
+              </section>
               <div class="group">
                 <div class="label">Display</div>
                 <div class="panel">
@@ -201,6 +208,10 @@
                 <button type="button" class="icon-button" id="minimap-close" data-tooltip="Close screen map" aria-label="Close screen map"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
               </div>
               <p id="minimap-status" class="muted" role="status">Screens and routes are remembered as the agent uses your app.</p>
+              <div id="minimap-disabled" class="minimap-disabled" hidden>
+                <p>Minimap tracking is off for all chats. Saved maps are kept. Device controls remain available.</p>
+                <button type="button" class="button" id="minimap-enable">Enable Minimap tracking</button>
+              </div>
               <div class="actions">
                 <button type="button" class="button" id="minimap-refresh">Refresh</button>
                 <button type="button" class="button" id="minimap-locate">Locate</button>

@@ -7,6 +7,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { combineAbortSignals } from '../lib/abort-signals.mjs';
 
 const exec = promisify(execFile);
 const MEBIBYTE = 1024 * 1024;
@@ -114,29 +115,32 @@ function checkAbort(signal) {
 async function readResponse(fetchImpl, url, maxBytes, signal) {
   checkAbort(signal);
   const timeout = AbortSignal.timeout(90_000);
-  signal = signal ? AbortSignal.any([signal, timeout]) : timeout;
-  const response = await fetchImpl(url, { signal, redirect: 'follow' });
-  if (!response?.ok) throw new Error(`Navigation dependency download failed (${response?.status ?? 'network error'}).`);
-  const size = Number(response.headers?.get?.('content-length'));
-  if (Number.isFinite(size) && size > maxBytes) throw new Error('Navigation dependency download exceeds its size limit.');
-  const chunks = [];
-  let total = 0;
-  if (response.body?.getReader) {
-    const reader = response.body.getReader();
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        total += value.byteLength;
-        if (total > maxBytes) throw new Error('Navigation dependency download exceeds its size limit.');
-        chunks.push(Buffer.from(value));
-      }
-    } finally { await reader.cancel().catch(() => {}); }
-  } else chunks.push(Buffer.from(await response.arrayBuffer()));
-  const bytes = Buffer.concat(chunks);
-  checkAbort(signal);
-  if (bytes.length > maxBytes) throw new Error('Navigation dependency download exceeds its size limit.');
-  return bytes;
+  const combined = combineAbortSignals([signal, timeout]);
+  signal = combined.signal;
+  try {
+    const response = await fetchImpl(url, { signal, redirect: 'follow' });
+    if (!response?.ok) throw new Error(`Navigation dependency download failed (${response?.status ?? 'network error'}).`);
+    const size = Number(response.headers?.get?.('content-length'));
+    if (Number.isFinite(size) && size > maxBytes) throw new Error('Navigation dependency download exceeds its size limit.');
+    const chunks = [];
+    let total = 0;
+    if (response.body?.getReader) {
+      const reader = response.body.getReader();
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          total += value.byteLength;
+          if (total > maxBytes) throw new Error('Navigation dependency download exceeds its size limit.');
+          chunks.push(Buffer.from(value));
+        }
+      } finally { await reader.cancel().catch(() => {}); }
+    } else chunks.push(Buffer.from(await response.arrayBuffer()));
+    const bytes = Buffer.concat(chunks);
+    checkAbort(signal);
+    if (bytes.length > maxBytes) throw new Error('Navigation dependency download exceeds its size limit.');
+    return bytes;
+  } finally { combined.dispose(); }
 }
 
 function checksum(bytes, expected) {
@@ -240,6 +244,7 @@ export function createNavigationDependencies({
     const candidate = await locate(name, overrideName);
     if (!candidate.available) return candidate;
     try {
+      checkAbort(signal);
       const result = await runCommand(candidate.file, name === 'android' ? ['--no-metrics', '--version'] : ['--version'], { environment: runtimeEnvironment(), signal });
       const version = resultVersion(result);
       if (result?.code === 0 && compatible(version)) return { name, available: true, file: candidate.file, source: candidate.source, version };
@@ -304,6 +309,7 @@ export function createNavigationDependencies({
       verify('android', 'ANDROID_EMULATOR_ANDROID_CLI', supportedAndroid, signal),
     ]).then(([minimap, android]) => ({ minimap, android }));
     for (const dependency of ['minimap', 'android']) {
+      checkAbort(signal);
       const current = state[dependency];
       if (current.available) {
         // Upgrade older managed caches that were installed without notices.
@@ -317,6 +323,7 @@ export function createNavigationDependencies({
         verify('minimap', 'ANDROID_EMULATOR_MINIMAP', supportedMinimap, signal),
         verify('android', 'ANDROID_EMULATOR_ANDROID_CLI', supportedAndroid, signal),
       ]).then(([minimap, android]) => ({ minimap, android }));
+      checkAbort(signal);
       if (!state[dependency].available) {
         await fs.rm(locations[dependency], { force: true }).catch(() => {});
         throw new Error(`${dependency === 'minimap' ? 'Minimap' : 'Android CLI'} installation did not produce a compatible executable.`);

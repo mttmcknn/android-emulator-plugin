@@ -161,6 +161,9 @@ input[type="number"] { width: 110px; font-family: var(--mono); font-size: 11px; 
 .minimap-drawer { width: min(1500px, 100%); gap: 14px; box-shadow: none; }
 .minimap-drawer .actions { margin-top: -4px; }
 .minimap-drawer .drawer-head { height: auto; min-height: 28px; align-items: start; }
+.minimap-disabled { padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.minimap-disabled p { margin: 0 0 12px; color: var(--text-2); }
+#minimap-enabled { flex: 0 0 auto; }
 .minimap-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line-strong); }
 .minimap-tabs button { border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; background: none; color: var(--text-2); }
 .minimap-tabs button[aria-selected="true"] { border-bottom-color: var(--accent); color: var(--text); }

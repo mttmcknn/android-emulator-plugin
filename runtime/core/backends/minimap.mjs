@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { sdk } from '../lib/sdk.mjs';
 import { createNavigationDependencies } from './navigation-dependencies.mjs';
 import { parseAndroidLayout } from './android-cli.mjs';
+import { combineAbortSignals } from '../lib/abort-signals.mjs';
 
 const exec = promisify(execFile);
 const MAX_OUTPUT = 8 * 1024 * 1024;
@@ -192,20 +193,16 @@ export function createMinimapBackend(options = {}) {
   const explicitExecutable = options.executable !== undefined;
   let probePromise, probeAt = 0;
   const dependencies = stateDir && runCommand === runMinimap ? createNavigationDependencies({ dir: stateDir,
+    runCommand: (file, args, { environment, signal }) => runMinimap(file, args, { env: environment, signal, timeoutMs: 120_000 }),
     environment: { ...process.env, PATH: [path.join(os.homedir(), '.local/bin'), '/opt/homebrew/bin', '/usr/local/bin', process.env.PATH].filter(Boolean).join(path.delimiter) } }) : null;
   let resolved;
   async function resolveDependencies(signal) {
     if (!dependencies || resolved) return;
     signal?.throwIfAborted();
-    const pending = dependencies.ensure({ signal });
-    if (!signal) { resolved = await pending; return; }
-    let abort;
-    try {
-      resolved = await Promise.race([pending, new Promise((_, reject) => {
-        abort = () => reject(signal.reason);
-        signal.addEventListener('abort', abort, { once: true });
-      })]);
-    } finally { signal.removeEventListener('abort', abort); }
+    // Await cancellation cleanup as well as the request itself. Returning early
+    // could leave an installer or version probe running after tracking is off.
+    resolved = await dependencies.ensure({ signal });
+    signal?.throwIfAborted();
   }
   function runtimeEnvironment(serial, sessionDir) {
     const base = environment();
@@ -228,23 +225,26 @@ export function createMinimapBackend(options = {}) {
     try { return { ...readMinimap(root), projectRoot: project.root, projectName: project.projectName, packageName }; }
     catch { return { ...base, initialized: true, error: 'The saved screen map could not be read. Ask the agent to diagnose navigation.' }; }
   }
-  async function probeDependencies() {
+  async function probeDependencies(signal) {
       try {
         const env = environment();
-        const result = await runCommand(executable, ['--version'], { env, timeoutMs: 5000 });
+        signal?.throwIfAborted();
+        const result = await runCommand(executable, ['--version'], { env, signal, timeoutMs: 5000 });
         const version = result.stdout.trim().match(/^minimap (0\.2\.\d+)$/)?.[1];
         if (result.code !== 0 || !version) return { available: false, reason: 'Install Minimap 0.2.1 or a newer 0.2.x patch. Other CLI versions are not supported.' };
         if (Number(version.split('.')[2]) < 1) return { available: false, version, reason: 'Update Minimap to 0.2.1. Version 0.2.0 cannot identify the foreground app reliably on mirrored foldables.' };
-        const android = await runCommand('android', ['--version'], { env, timeoutMs: 5000 });
+        signal?.throwIfAborted();
+        const android = await runCommand('android', ['--version'], { env, signal, timeoutMs: 5000 });
         if (android.code !== 0) return { available: false, version, reason: 'Android CLI is required by Minimap. Install android and make it available on PATH.' };
         return { available: true, version };
       } catch { return { available: false, reason: 'Minimap needs the Minimap 0.2.1+ CLI, Android CLI, and Android SDK. Install the missing dependency; Minimap is found on PATH or in ~/.local/bin.' }; }
   }
   const provider = {
     id: 'minimap', label: 'Minimap navigation memory', version: '0.2.x',
-    async uiNodes(serial, { timeoutMs = 30_000 } = {}) {
+    async uiNodes(serial, { timeoutMs = 30_000, signal: parentSignal } = {}) {
       if (!dependencies) return null;
-      const signal = AbortSignal.timeout(timeoutMs);
+      const timeout = AbortSignal.timeout(timeoutMs);
+      const { signal, dispose } = combineAbortSignals([parentSignal, timeout]);
       // Android CLI owns a persistent inspection service. Running ADB's
       // uiautomator dump alongside it kills that service, including after a
       // helper restart. Share its reader for all ordinary inspection tools.
@@ -254,12 +254,15 @@ export function createMinimapBackend(options = {}) {
         if (response.code !== 0) throw new Error('Android CLI could not inspect the screen. Retry observation before sending input.');
         return parseAndroidLayout(response.stdout);
       } catch (error) {
+        if (parentSignal?.aborted) throw parentSignal.reason;
         if (signal.aborted) throw new Error('UI inspection timed out (exit 124).');
         throw error;
-      }
+      } finally { dispose(); }
     },
-    probe() {
+    probe({ signal } = {}) {
+      signal?.throwIfAborted();
       if (dependencies) return Promise.resolve({ available: true, automaticSetup: true, version: resolved?.versions.minimap.replace(/^minimap /, '') });
+      if (signal) return probeDependencies(signal);
       if (!probePromise || Date.now() - probeAt > 30_000) {
         probeAt = Date.now();
         probePromise = probeDependencies();
@@ -308,7 +311,9 @@ export function createMinimapBackend(options = {}) {
         },
         async prepare({ cwd, packageName }, { signal } = {}) {
           await resolveDependencies(signal);
-          const availability = await provider.probe();
+          signal?.throwIfAborted();
+          const availability = await provider.probe({ signal });
+          signal?.throwIfAborted();
           if (!availability.available) throw new Error(availability.reason);
           const map = mapFor(cwd, packageName);
           if (map.error) throw new Error(map.error);
@@ -321,6 +326,7 @@ export function createMinimapBackend(options = {}) {
         },
         async execute({ cwd, serial, packageName, automatic = false, sourcePrepared = false, sessionDir, ...options }, { signal } = {}) {
           await resolveDependencies(signal);
+          signal?.throwIfAborted();
           if (automatic && stateDir && !sessionDir) {
             const base = path.join(stateDir, 'navigation', 'sessions');
             fs.mkdirSync(base, { recursive: true, mode: 0o700 });
