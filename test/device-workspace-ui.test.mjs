@@ -27,6 +27,7 @@ class Node {
   addEventListener(name, listener, options) { this.listeners.set(name, { listener, options }); }
   dispatch(name, event = {}) { const entry = this.listeners.get(name); if (entry?.options?.once) this.listeners.delete(name); return entry?.listener(event); }
   querySelectorAll(selector) { return this.children.flatMap((node) => [...(selector === '[role="tab"]' && node.role === 'tab' ? [node] : []), ...node.querySelectorAll(selector)]); }
+  querySelector(selector) { return selector === 'button:not(:disabled)' ? this.children.find(node => node.tagName === 'button' && !node.disabled) : null; }
   remove() { this.removed = true; }
   focus() { this.focused = true; }
   showModal() { this.open = true; }
@@ -54,6 +55,7 @@ function fixture({ embedded = false, initialize = true } = {}) {
     function renderLauncher() {} function showMessage() {}
     function applyMinimapSettings(settings) { latestSettings = settings; }
     let latestSettings;
+    function setTooltip(button, label) { button.setAttribute('aria-label', label); }
     const actionCalls = [];
     async function call(tool, args) { actionCalls.push({ tool, args }); return tool === 'emulator_devices' ? currentInventory : {}; }
     let currentInventory;
@@ -110,7 +112,7 @@ test('workspace defaults to one fixed-device frame and switches tabs without sto
   assert.equal(tabs[0].tabIndex, -1);
 });
 
-test('Compare, Single view, and drag-to-compare manage exact pairs and parent visibility', () => {
+test('comparison toggle and drag-to-compare manage exact pairs and parent visibility', () => {
   const p = fixture();
   p.inventory([device('a'), device('b'), device('c')]);
   p.$('workspace-compare').dispatch('click');
@@ -121,7 +123,8 @@ test('Compare, Single view, and drag-to-compare manage exact pairs and parent vi
   p.run("workspaceFrames.get('a').visibilityHandler = recordVisibility;");
   p.run("selectWorkspaceDevice('c')");
   assert.equal(visibility.at(-1), false);
-  p.$('workspace-single').dispatch('click');
+  assert.equal(p.$('workspace-compare').attributes['aria-label'], 'Exit comparison');
+  p.$('workspace-compare').dispatch('click');
   assert.equal(p.run('comparisonDeviceId'), null);
   assert.equal(p.run("workspaceFrames.get('b').frame.hidden"), true);
   const transfer = { setData() {} };
@@ -135,6 +138,47 @@ test('Compare, Single view, and drag-to-compare manage exact pairs and parent vi
   assert.equal(visibility.at(-1), false);
   p.run('globalThis.__emulatorWorkspaceVisibility(true)');
   assert.equal(visibility.at(-1), true);
+});
+
+test('one device uses its own header; adding and removing devices updates chrome without recreating streams', () => {
+  const p = fixture();
+  p.inventory([device('a')]);
+  assert.equal(p.$('workspace-bar').hidden, true);
+  assert.equal(p.$('workspace-tabs').hidden, true);
+  assert.equal(p.$('workspace-compare').hidden, true);
+  const frame = p.run("workspaceFrames.get('a').frame");
+  const layouts = [];
+  frame.contentWindow.__emulatorFrameLayout = single => layouts.push(single);
+  frame.dispatch('load');
+  assert.equal(layouts.at(-1), true);
+  p.inventory([device('a'), device('b')]);
+  assert.equal(p.$('workspace-bar').hidden, false);
+  assert.equal(p.$('workspace-tabs').hidden, false);
+  assert.equal(p.$('workspace-compare').hidden, false);
+  assert.equal(layouts.at(-1), false);
+  p.inventory([device('a')]);
+  assert.equal(p.$('workspace-bar').hidden, true);
+  assert.equal(layouts.at(-1), true);
+  assert.equal(p.run("workspaceFrames.get('a').frame"), frame);
+});
+
+test('single-device dropdown keeps device management reachable and stops only that device', async () => {
+  const p = fixture();
+  p.inventory([device('a', { kind: 'physical' })]);
+  p.$('workspace-menu').hidden = true;
+  p.context.opener = new Node('button');
+  await p.run('__emulatorWorkspaceMenu(opener)');
+  assert.equal(p.$('workspace-menu').hidden, false);
+  assert.equal(p.context.opener.attributes['aria-expanded'], 'true');
+  assert.equal(p.$('workspace-menu').querySelector('button:not(:disabled)').focused, true);
+  const items = p.$('workspace-menu').children.filter(node => node.tagName === 'button');
+  assert.ok(items.some(node => node.children[0].textContent === 'Refresh devices'));
+  assert.ok(items.some(node => node.children[0].textContent === 'New device…'));
+  await items.find(node => node.children[0].textContent === 'Unpin Device a').dispatch('click');
+  assert.equal(p.context.opener.attributes['aria-expanded'], 'false');
+  assert.equal(p.$('workspace-menu').hidden, true);
+  const stop = p.run("actionCalls.find(({tool}) => tool === 'emulator_stop')");
+  assert.equal(stop.args.deviceId, 'a');
 });
 
 test('unpinning disposes only its frame; a disconnected physical pin remains selected', () => {

@@ -11,19 +11,18 @@
   <body>
     <!-- All devices pinned to this chat live inside this panel. -->
     <div id="workspace-view" class="view" hidden>
-      <header class="bar workspace-bar">
-        <button type="button" class="device-button" id="workspace-device-button" aria-haspopup="menu" aria-expanded="false">
-          <span class="name">Devices</span><span id="workspace-count" class="meta"></span>
-          <svg class="chevron" viewBox="0 0 16 16"><path d="m4.5 6.5 3.5 3.5 3.5-3.5" /></svg>
-        </button>
+      <header class="bar workspace-bar" id="workspace-bar" hidden>
+        <div id="workspace-tabs" role="tablist" aria-label="Pinned devices"></div>
         <div class="bar-end">
-          <button type="button" class="button" id="workspace-refresh" aria-label="Refresh connected devices">Refresh</button>
-          <button type="button" class="button" id="workspace-compare" aria-pressed="false" disabled>Compare</button>
-          <button type="button" class="button" id="workspace-single" aria-pressed="true">Single view</button>
+          <button type="button" class="icon-button" id="workspace-device-button" aria-label="Add or manage devices" data-tooltip="Add or manage devices" aria-haspopup="menu" aria-controls="workspace-menu" aria-expanded="false">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+          <button type="button" class="icon-button" id="workspace-compare" aria-label="Compare devices" data-tooltip="Compare devices" aria-pressed="false" hidden>
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M12 4v16" /></svg>
+          </button>
         </div>
-        <div id="workspace-menu" class="menu" role="menu" aria-label="Devices" hidden></div>
       </header>
-      <div id="workspace-tabs" role="tablist" aria-label="Pinned devices"></div>
+      <div id="workspace-menu" class="menu" role="menu" aria-label="Devices" hidden></div>
       <div id="workspace-main">
         <div id="workspace-frames"></div>
         <div id="workspace-launcher" hidden>

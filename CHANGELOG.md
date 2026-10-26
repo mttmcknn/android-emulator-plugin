@@ -8,6 +8,16 @@ dates. Versions 2026.10.7 and 2026.10.8 describe development source history; nei
 had a published GitHub release. Available history starts at this repository's
 initial commit; no history from a retired or separate repository is inferred.
 
+## [Unreleased]
+
+### Changed
+
+- Use one compact header for a single device. Device management is available from
+  the device-name menu. Multiple devices share a tab row with add and comparison
+  controls; dragging one tab onto another still opens comparison.
+- Remove the dark edge around the streamed display while keeping its rounded
+  corners, soft shadow and keyboard focus indicator.
+
 ## [2026.10.18+minimap.1]
 
 Same-day follow-up to 2026.10.18 with a distinct version, tag and package.

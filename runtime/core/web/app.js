@@ -4,6 +4,10 @@ const $ = (id) => document.getElementById(id);
 let view = document.body.dataset.view ?? 'device';
 const deviceFrame = document.body.hasAttribute('data-device-frame') || new URLSearchParams(location.search).get('deviceFrame') === '1';
 if (deviceFrame) document.body.setAttribute('data-device-frame', 'true');
+if (deviceFrame) globalThis.__emulatorFrameLayout = (single) => {
+  document.body.classList.toggle('single-device', single);
+  $('device-button').disabled = !single;
+};
 // Capture the self-contained resource before the workspace moves the launcher or changes UI.
 const deviceTemplate = !deviceFrame ? document.documentElement.cloneNode(true) : null;
 const host = globalThis.emulatorHost;
@@ -1806,12 +1810,13 @@ $('log-pause').addEventListener('click', () => {
 $('log-level').addEventListener('change', refilterLog);
 $('log-filter').addEventListener('input', refilterLog);
 $('device-button').addEventListener('click', () => {
-  if (deviceFrame) return;
+  if (deviceFrame) return parent.__emulatorWorkspaceMenu?.($('device-button'));
   menu.hidden = !menu.hidden;
   $('device-button').setAttribute('aria-expanded', String(!menu.hidden));
 });
 document.addEventListener('click', (event) => {
   if (!menu.hidden && !event.target.closest('#device-menu, #device-button')) closeMenu();
+  if (deviceFrame && !event.target.closest('#device-button')) parent.__emulatorWorkspaceCloseMenu?.();
 });
 $('profile').addEventListener('change', () => lastStatus && renderLauncher(lastStatus));
 $('create-form').addEventListener('submit', (event) => {
@@ -1837,6 +1842,7 @@ let comparisonDeviceId = null;
 let workspaceLauncherOpen = false;
 let draggedDeviceId = null;
 let workspaceBusy = false;
+let workspaceMenuOpener = null;
 
 // Keep selection stable across refreshes and remove a missing comparison partner.
 function workspaceSelection(devices, activeId, comparisonId) {
@@ -1896,29 +1902,20 @@ function initializeWorkspace(initialResult = null) {
     for (const entry of workspaceFrames.values()) disposeDeviceFrame(entry);
     workspaceFrames.clear();
   });
-  $('workspace-device-button').addEventListener('click', async () => {
-    const open = $('workspace-menu').hidden;
-    $('workspace-menu').hidden = !open;
-    $('workspace-device-button').setAttribute('aria-expanded', String(open));
-    if (open) await refreshWorkspace();
-  });
+  globalThis.__emulatorWorkspaceMenu = toggleWorkspaceMenu;
+  globalThis.__emulatorWorkspaceCloseMenu = closeWorkspaceMenu;
+  $('workspace-device-button').addEventListener('click', () => toggleWorkspaceMenu());
   document.addEventListener('click', (event) => {
     if (!event.target.closest('#workspace-menu, #workspace-device-button')) closeWorkspaceMenu();
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !$('workspace-menu').hidden) {
+      workspaceMenuOpener?.focus();
       closeWorkspaceMenu();
-      $('workspace-device-button').focus();
     }
   });
-  $('workspace-refresh').addEventListener('click', () => refreshWorkspace());
   $('workspace-compare').addEventListener('click', () => {
-    comparisonDeviceId ??= workspaceStatus?.devices.find(({ id }) => id !== activeDeviceId)?.id ?? null;
-    workspaceLauncherOpen = false;
-    renderWorkspaceLayout();
-  });
-  $('workspace-single').addEventListener('click', () => {
-    comparisonDeviceId = null;
+    comparisonDeviceId = comparisonDeviceId ? null : workspaceStatus?.devices.find(({ id }) => id !== activeDeviceId)?.id ?? null;
     workspaceLauncherOpen = false;
     renderWorkspaceLayout();
   });
@@ -1939,8 +1936,21 @@ function initializeWorkspace(initialResult = null) {
   showMessage('Connecting devices…');
 }
 
+async function toggleWorkspaceMenu(opener = $('workspace-device-button')) {
+  const open = $('workspace-menu').hidden;
+  closeWorkspaceMenu();
+  if (!open) return;
+  workspaceMenuOpener = opener;
+  $('workspace-menu').hidden = false;
+  opener.setAttribute('aria-expanded', 'true');
+  await refreshWorkspace();
+  if (!$('workspace-menu').hidden) $('workspace-menu').querySelector('button:not(:disabled)')?.focus();
+}
+
 function closeWorkspaceMenu() {
   $('workspace-menu').hidden = true;
+  workspaceMenuOpener?.setAttribute('aria-expanded', 'false');
+  workspaceMenuOpener = null;
   $('workspace-device-button').setAttribute('aria-expanded', 'false');
 }
 
@@ -2022,7 +2032,6 @@ function renderWorkspace(result) {
     entry.frame.remove();
     workspaceFrames.delete(id);
   }
-  $('workspace-count').textContent = String(status.devices.length);
   // Inventory refreshes must not replace a focused tab or interrupt a drag.
   if (!previous || JSON.stringify(previous.devices) !== JSON.stringify(status.devices)) renderWorkspaceTabs();
   renderWorkspaceMenu();
@@ -2109,6 +2118,13 @@ function renderWorkspaceMenu() {
     renderWorkspaceLayout();
     $('profile').focus();
   });
+  items.push(element('hr'));
+  item('Refresh devices', 'Check for connected and saved devices', () => refreshWorkspace());
+  if (workspaceStatus.devices.length === 1) {
+    const device = workspaceStatus.devices[0];
+    const action = device.kind === 'physical' ? 'Unpin' : 'Stop';
+    item(`${action} ${device.label}`, 'Remove from this chat', () => workspaceAction('emulator_stop', { deviceId: device.id }, `${action === 'Stop' ? 'Stopping' : 'Unpinning'} ${device.label}…`));
+  }
   $('workspace-menu').replaceChildren(...items);
 }
 
@@ -2143,7 +2159,10 @@ function ensureDeviceFrame(device) {
   frame.setAttribute('role', 'tabpanel');
   entry = { frame, panel };
   workspaceFrames.set(device.id, entry);
-  frame.addEventListener('load', () => setDeviceFrameVisible(entry, !frame.hidden && panelVisible()));
+  frame.addEventListener('load', () => {
+    entry.frame.contentWindow?.__emulatorFrameLayout?.(workspaceStatus.devices.length === 1);
+    setDeviceFrameVisible(entry, !frame.hidden && panelVisible());
+  });
   if (embedded) {
     const template = deviceTemplate.cloneNode(true);
     template.querySelector('body').setAttribute('data-device-frame', device.id);
@@ -2176,9 +2195,11 @@ function renderWorkspaceLayout() {
   $('workspace-launcher-close').hidden = !devices.length;
   $('workspace-frames').hidden = launcherShown;
   $('workspace-frames').classList.toggle('comparing', Boolean(comparisonDeviceId));
-  $('workspace-compare').disabled = devices.length < 2;
+  $('workspace-bar').hidden = devices.length < 2 && !launcherShown;
+  $('workspace-tabs').hidden = devices.length < 2;
+  $('workspace-compare').hidden = devices.length < 2 || launcherShown;
   $('workspace-compare').setAttribute('aria-pressed', String(Boolean(comparisonDeviceId)));
-  $('workspace-single').setAttribute('aria-pressed', String(!comparisonDeviceId));
+  setTooltip($('workspace-compare'), comparisonDeviceId ? 'Exit comparison' : 'Compare devices');
   for (const device of devices) {
     if (selected.includes(device.id) && !launcherShown) ensureDeviceFrame(device);
   }
@@ -2188,6 +2209,7 @@ function renderWorkspaceLayout() {
     entry.frame.setAttribute('aria-labelledby', `device-tab-${index}`);
     entry.frame.hidden = launcherShown || !selected.includes(id);
     entry.frame.style.order = String(selected.indexOf(id));
+    entry.frame.contentWindow?.__emulatorFrameLayout?.(devices.length === 1);
     setDeviceFrameVisible(entry, !entry.frame.hidden && panelVisible());
   }
   for (const tab of $('workspace-tabs').querySelectorAll('[role="tab"]')) {

@@ -17,7 +17,8 @@
   --ok: var(--color-text-success, #3dd68c);
   --warn: var(--color-text-warning, #e8c34a);
   --debug: var(--color-text-info, #82b5ff);
-  --shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --drop-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow: var(--drop-shadow), 0 0 0 1px rgba(255, 255, 255, 0.04);
   --radius: 6px;
   --font: var(--font-sans, var(--emulator-font, -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif));
   --mono: var(--font-mono, var(--emulator-mono, "SF Mono", ui-monospace, Menlo, monospace));
@@ -40,7 +41,8 @@
   --danger: var(--color-text-danger, #c42b33);
   --warn: var(--color-text-warning, #8c6b00);
   --debug: var(--color-text-info, #2463bf);
-  --shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --drop-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  --shadow: var(--drop-shadow), 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 * { box-sizing: border-box; }
@@ -81,9 +83,9 @@ main { flex: 1; min-height: 0; display: flex; }
 
 /* Device */
 #device { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-#screen-box { position: absolute; inset: 0; overflow: hidden; background: #000; border-radius: 6px; box-shadow: var(--shadow); }
+#screen-box { position: absolute; inset: 0; overflow: hidden; border-radius: 6px; box-shadow: var(--drop-shadow); }
 #screen { display: block; width: 100%; height: 100%; touch-action: none; }
-#stage:has(#keys:focus) #screen-box { box-shadow: var(--shadow), 0 0 0 1.5px var(--accent); }
+#stage:has(#keys:focus) #screen-box { box-shadow: var(--drop-shadow), 0 0 0 1.5px var(--accent); }
 #keys { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; resize: none; }
 /* Agent activity */
 #agent-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -266,10 +268,11 @@ button.primary.android { background: var(--android); color: #0b2e1a; }
 #tooltip { position: fixed; z-index: 100; max-width: calc(100vw - 16px); padding: 7px 10px; border-radius: 8px; background: var(--color-background-inverse, var(--text)); color: var(--color-text-inverse, var(--bg)); box-shadow: var(--shadow); font-size: 12px; line-height: 16px; pointer-events: none; }
 
 /* Device workspace: tabs are internal to the panel; comparison keeps two fixed streams. */
-.workspace-bar { height: auto; min-height: 40px; flex-wrap: wrap; padding: 5px 6px; }
-.workspace-bar .bar-end { gap: 5px; flex-wrap: wrap; }
-.workspace-bar .button[aria-pressed="true"] { background: var(--pressed); border-color: var(--accent); }
-#workspace-tabs { display: flex; flex: none; overflow-x: auto; border-bottom: 1px solid var(--line); min-height: 35px; }
+#workspace-view { position: relative; }
+.workspace-bar { height: 36px; padding: 0 6px 0 0; gap: 4px; }
+.workspace-bar .bar-end { flex: none; margin-left: auto; }
+.workspace-bar .icon-button[aria-pressed="true"] { background: var(--pressed); color: var(--accent); }
+#workspace-tabs { display: flex; flex: 1; min-width: 0; overflow-x: auto; height: 35px; }
 .device-tab { flex: none; display: flex; max-width: 260px; align-items: center; border-right: 1px solid var(--line); }
 .device-tab button { border: 0; background: none; color: var(--text-2); }
 .device-tab [role="tab"] { min-width: 0; padding: 9px 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -297,9 +300,12 @@ button.primary.android { background: var(--android); color: #0b2e1a; }
 .connected-device-detail .meta { display: block; font-size: 11px; }
 body[data-device-frame] .device-button { cursor: default; pointer-events: none; }
 body[data-device-frame] .device-button .chevron { display: none; }
+body[data-device-frame].single-device .device-button { cursor: pointer; pointer-events: auto; }
+body[data-device-frame].single-device .device-button .chevron { display: block; }
+.device-button .name { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 380px) { .device-button .meta { display: none; } }
 body[data-device-frame].inline { height: 100%; }
 @media (max-width: 480px) {
   #workspace-frames.comparing { grid-template-columns: minmax(0, 1fr); grid-template-rows: repeat(2, minmax(0, 1fr)); }
   #workspace-frames.comparing .device-frame + .device-frame { border-left: 0; border-top: 1px solid var(--line-strong); }
-  .workspace-bar .button { padding: 0 8px; }
 }
