@@ -19,6 +19,7 @@ if [ "$1" = "-list-avds" ]; then
   printf 'Pixel_10\nPixel_10a\n'
   exit 0
 fi
+printf '%s\\n' "$@"
 sleep 0.5
 `,
 );
@@ -34,6 +35,27 @@ function manager() {
 async function stopAll(leases) {
   await Promise.allSettled(Object.keys(leases.leases).map((threadId) => leases.stop(threadId)));
 }
+
+test('startup does not require a host display and preserves instance options', async (t) => {
+  const displayVariables = ['DISPLAY', 'WAYLAND_DISPLAY', 'QT_QPA_PLATFORM'];
+  const previous = Object.fromEntries(displayVariables.map(name => [name, process.env[name]]));
+  for (const name of displayVariables) delete process.env[name];
+  t.after(() => {
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  });
+  const leases = manager();
+  t.after(() => stopAll(leases));
+  const lease = await leases.start('headless', { avd: 'Pixel_10', readOnly: true, coldBoot: true });
+  const args = fs.readFileSync(lease.logFile, 'utf8').trim().split('\n');
+  assert.deepEqual(args, [
+    '-avd', 'Pixel_10', '-port', String(lease.port), '-no-window',
+    '-no-boot-anim', '-netdelay', 'none', '-netspeed', 'full', '-read-only', '-no-snapshot-load',
+  ]);
+  assert.equal(lease.state, 'ready');
+});
 
 test('simultaneous automatic starts reserve different writable AVDs', async (t) => {
   const leases = manager();

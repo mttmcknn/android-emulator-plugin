@@ -10,6 +10,13 @@ initial commit; no history from a retired or separate repository is inferred.
 
 ## [Unreleased]
 
+### Fixed
+
+- Start emulators with `-no-window` so the streamed device panel can be used
+  without a host X11 or Wayland display. The previous hidden Qt window still
+  required a display connection. No display variable or Xvfb setup is needed
+  for emulator startup; Codex desktop retains its own display requirements.
+
 ### Changed
 
 - Use one compact header for a single device. Device management is available from
