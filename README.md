@@ -40,6 +40,10 @@ The **Android Emulators** sidebar manages running devices and saved virtual devi
 
 Use an existing Android Virtual Device or ask the agent to create one. Set `ANDROID_HOME` if your SDK is installed in a custom location. When Minimap tracking is enabled, screen memory prepares its dependencies on first use and needs internet access for missing downloads.
 
+The plugin starts emulators with `-no-window` and streams their display into the
+panel through scrcpy. Emulator startup does not require an X11 or Wayland display
+or Xvfb. The Codex desktop app still needs its own working desktop session.
+
 For a physical device, enable USB debugging, connect it, and accept Android's debugging prompt. Select it from the panel's device dropdown. Unpinning releases the connection without shutting down the phone. Rotation, simulated location/battery, fold posture, and snapshots require an emulator.
 
 Screen memory may download Minimap and [Google's Android CLI](https://developer.android.com/tools/agents/android-cli/download) directly from their upstream servers. The CLI launcher can download its own runtime and is invoked even during version checks. Review the applicable [Android SDK terms](https://developer.android.com/studio/terms) before first use; users handle their own agreement. To use installations you manage yourself, set `ANDROID_EMULATOR_MINIMAP` and `ANDROID_EMULATOR_ANDROID_CLI` to those executables. These tools are downloaded separately and are not included in the plugin archive.

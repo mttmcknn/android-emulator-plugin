@@ -259,7 +259,8 @@ export class LeaseManager extends EventEmitter {
     try {
       port = await this.reservePort(devices);
       const serial = `emulator-${port}`;
-      const args = ['-avd', avd, '-port', String(port), '-qt-hide-window', '-no-boot-anim', '-netdelay', 'none', '-netspeed', 'full'];
+      // The panel streams through scrcpy; a hidden Qt window still needs a host display.
+      const args = ['-avd', avd, '-port', String(port), '-no-window', '-no-boot-anim', '-netdelay', 'none', '-netspeed', 'full'];
       if (ephemeral) args.push('-read-only');
       if (coldBoot) args.push('-no-snapshot-load');
 
